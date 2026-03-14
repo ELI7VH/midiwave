@@ -1,0 +1,173 @@
+# midi-lab — Interactive MIDI Device Workbench
+
+## What This Is
+
+A browser-based tool for hands-on exploration of MIDI devices — specifically targeting Novation Launch Control XL3 (LCXL3) DAW mode, but useful for any MIDI controller. The goal is rapid iteration: type text and see it on the OLED, pick a color and see it on a button LED, monitor incoming CCs in real time, and export working configs for use in real apps.
+
+This exists because the LCXL3's DAW mode protocol (SysEx for RGB LEDs, OLED screen, relative encoders) is underdocumented and requires live experimentation to get right.
+
+## Architecture
+
+**Web MIDI API** in the browser — no backend, no install. A single HTML file (or small HTML+JS) that:
+
+1. Enumerates MIDI devices via `navigator.requestMIDIAccess({ sysex: true })`
+2. Lets the user select input + output ports from dropdowns
+3. Provides interactive panels for each capability
+4. Monitors all incoming MIDI and logs it live
+
+## Panels
+
+### 1. Device Connection
+- Dropdown: select MIDI input port
+- Dropdown: select MIDI output port
+- "DAW Mode ON" / "DAW Mode OFF" buttons
+- Connection status indicator
+
+### 2. MIDI Monitor (Input)
+- Live scrolling log of all incoming messages
+- Columns: timestamp, type (CC/Note/SysEx), channel, data1, data2, hex
+- Filter by message type
+- Highlight: when a CC arrives, flash the corresponding entry
+- "Learn" mode: click "Learn", then move a knob/press a button on the controller — captures the CC number + channel
+
+### 3. OLED Screen Writer
+- Text field for line 1
+- Text field for line 2
+- "Send" button — immediately pushes text to the LCXL3 OLED
+- Target selector (0x35 default — the LCXL3 screen target)
+- Arrangement selector (1 = two-line layout)
+- Live preview of what's being sent (hex dump)
+
+### 4. RGB LED Control
+- Grid of buttons representing the LCXL3's 16 button positions (CC 37-52 in stock DAW mode, but allow arbitrary CC index input)
+- Click a button → opens a color picker
+- Color picker change → immediately sends RGB SysEx to that LED
+- "All same color" button for quick fill
+- Manual CC index input for non-standard button mappings
+
+### 5. CC Sender
+- Channel selector (1-16)
+- CC number input
+- Value slider (0-127)
+- "Send" button + option for "send on slider move" (live)
+- Useful for testing encoder relative mode enable/disable, etc.
+
+### 6. SysEx Workbench
+- Raw hex input field (space-separated bytes, auto-adds F0/F7 if missing)
+- "Send" button
+- Preset buttons for known LCXL3 commands:
+  - DAW Mode ON: `F0 00 20 29 02 15 02 7F F7`
+  - DAW Mode OFF: `F0 00 20 29 02 15 02 00 F7`
+  - Relative Row 2 ON: CC ch7 #72 val 127
+  - Relative Row 3 ON: CC ch7 #73 val 127
+- Response log (incoming SysEx)
+
+### 7. Export
+- "Export Config" button → generates a JSON file:
+```json
+{
+  "device": "Launch Control XL MK3",
+  "daw_mode": true,
+  "sysex_header": [240, 0, 32, 41, 2, 21],
+  "buttons": {
+    "play":    { "cc": 116, "channel": 1, "led_color": [0, 100, 10] },
+    "rec":     { "cc": 118, "channel": 1, "led_color": [120, 10, 0] }
+  },
+  "encoders": {
+    "row1": { "ccs": [13,14,15,16,17,18,19,20], "channel": 16, "mode": "absolute" },
+    "row2": { "ccs": [29,30,31,32,33,34,35,36], "channel": 16, "mode": "relative" }
+  },
+  "faders": {
+    "ccs": [77,78,79,80,81,82,83,84],
+    "channel": 16
+  },
+  "screen": {
+    "target": "0x35",
+    "arrangement": 1
+  }
+}
+```
+- This JSON becomes the source of truth for waveloop's config.ini MIDI section, or any other app.
+
+## Novation LCXL3 DAW Mode Protocol Reference
+
+Everything below was reverse-engineered from the working waveloop C code (`midi_win.c`).
+
+### SysEx Header
+All LCXL3 SysEx messages start with: `F0 00 20 29 02 15`
+
+### DAW Mode
+- **Enter**: `F0 00 20 29 02 15 02 7F F7`
+- **Exit**: `F0 00 20 29 02 15 02 00 F7`
+- DAW mode changes the MIDI routing — input handle may need to be reopened after entering DAW mode (known issue in waveloop)
+- In DAW mode, button presses send CCs on channel 1 (val > 0 = press)
+- Faders send CCs on channel 16 (absolute 0-127)
+- Encoders send CCs on channel 16 (absolute by default, relative if enabled)
+
+### Relative Encoder Mode
+Enable relative mode per row by sending CC on **channel 7** (0xB6):
+- Row 1: CC 69 — `B6 45 7F` (on) / `B6 45 00` (off)
+- Row 2: CC 72 — `B6 48 7F` (on) / `B6 48 00` (off)
+- Row 3: CC 73 — `B6 49 7F` (on) / `B6 49 00` (off)
+
+Relative values: center at 64. 65+ = clockwise, 63- = counter-clockwise. Delta = value - 64.
+
+### RGB LED (SysEx)
+Set a button LED color:
+```
+F0 00 20 29 02 15 01 <cc_index> <R> <G> <B> F7
+```
+- `cc_index`: the CC number of the button (e.g., 37-52 for default DAW mode buttons, or 116/118 for remapped ones)
+- R, G, B: 0-127 each
+
+### OLED Screen (SysEx)
+Two-step process:
+
+**Step 1 — Configure display:**
+```
+F0 00 20 29 02 15 04 <target> <arrangement> F7
+```
+- `target`: 0x35 for the LCXL3 main screen
+- `arrangement`: 1 = two-line layout
+
+**Step 2 — Set text:**
+```
+F0 00 20 29 02 15 06 <target> 00 <line1 ASCII bytes> 00 01 <line2 ASCII bytes> F7
+```
+- Field 0x00 = line 1, field 0x01 = line 2
+- ASCII chars masked to 7-bit (& 0x7F)
+- Null byte (0x00) terminates line 1 text before field 0x01 marker
+
+### Known LCXL3 Port Names (Windows)
+- **MIDIIN2 (Launch Control XL MK3)** — DAW input port
+- **MIDIOUT2 (Launch Control XL MK3)** — DAW output port (SysEx, LEDs, screen)
+- **MIDIIN (Launch Control XL MK3)** — standalone input port
+- **MIDIOUT (Launch Control XL MK3)** — standalone output port
+
+DAW mode only works on the MIDIIN2/MIDIOUT2 pair. Opening the wrong port is a common source of "nothing works."
+
+### Initialization Sequence (what waveloop does)
+1. Enumerate devices, find MIDIIN2 + MIDIOUT2 with "Launch Control" in name
+2. Open output (MIDIOUT2)
+3. Open input (MIDIIN2) — must be opened/reopened after output is ready
+4. Send DAW mode ON sysex
+5. Enable relative encoders (rows 2+3)
+6. Configure + send screen text
+7. Begin sending RGB LED updates
+
+**Critical**: The input handle opened before DAW mode entry may be stale. In waveloop, reopening the input after the output is established and before DAW mode entry fixes MIDI input not working. The browser Web MIDI API may not have this issue since it doesn't use WinMM handles.
+
+## Tech Stack
+
+- Single `index.html` with inline CSS + JS
+- Web MIDI API (Chrome/Edge — requires HTTPS or localhost, sysex: true)
+- No dependencies, no build step
+- Can be opened as a local file or served from any static host
+
+## File Location
+
+```
+waveloop/windows/tools/midi-lab/
+├── index.html      # the entire app
+└── CLAUDE.md       # this file
+```

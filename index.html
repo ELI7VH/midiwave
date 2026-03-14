@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIDI Lab</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0a0f;
+  --surface: #14141f;
+  --surface2: #1e1e2e;
+  --border: #2a2a3a;
+  --text: #e0e0e8;
+  --text-dim: #888;
+  --accent: #7c6aef;
+  --accent2: #4ecdc4;
+  --red: #ef4444;
+  --green: #22c55e;
+  --yellow: #eab308;
+}
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+header h1 { font-size: 20px; font-weight: 600; }
+header .status {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: var(--surface2);
+}
+header .status.connected { color: var(--green); }
+header .status.disconnected { color: var(--red); }
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  height: calc(100vh - 57px);
+}
+.panel {
+  background: var(--surface);
+  overflow-y: auto;
+}
+.panel-header {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+.panel-body { padding: 16px; }
+.row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.row.wrap { flex-wrap: wrap; }
+label {
+  font-size: 12px;
+  color: var(--text-dim);
+  min-width: 70px;
+}
+select, input[type="text"], input[type="number"] {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+}
+select { cursor: pointer; }
+input[type="color"] {
+  width: 36px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+  cursor: pointer;
+  padding: 0;
+}
+input[type="range"] { flex: 1; accent-color: var(--accent); }
+button {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+button:hover { background: var(--border); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { opacity: 0.85; }
+button.danger { border-color: var(--red); color: var(--red); }
+button.success { border-color: var(--green); color: var(--green); }
+button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-sm { padding: 4px 8px; font-size: 11px; }
+
+/* MIDI Monitor */
+#monitor-log {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 11px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 4px;
+}
+#monitor-log .entry {
+  padding: 2px 6px;
+  border-bottom: 1px solid #1a1a2a;
+  display: grid;
+  grid-template-columns: 70px 50px 30px 40px 40px 1fr;
+  gap: 8px;
+}
+#monitor-log .entry.flash { background: rgba(124, 106, 239, 0.15); }
+#monitor-log .entry .type { font-weight: 600; }
+#monitor-log .entry .type.cc { color: var(--accent2); }
+#monitor-log .entry .type.note { color: var(--yellow); }
+#monitor-log .entry .type.sysex { color: var(--accent); }
+
+/* LED Grid */
+.led-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  margin: 10px 0;
+}
+.led-btn {
+  aspect-ratio: 1;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: #222;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: border-color 0.15s;
+  position: relative;
+}
+.led-btn:hover { border-color: var(--accent); }
+.led-btn .cc-label {
+  position: absolute;
+  bottom: 2px;
+  font-size: 9px;
+  opacity: 0.5;
+}
+
+/* Pages */
+.page-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.page-tab {
+  padding: 4px 12px;
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.page-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* SysEx workbench */
+#sysex-input {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  resize: vertical;
+  min-height: 40px;
+}
+
+/* Hex preview */
+.hex-preview {
+  font-family: 'Cascadia Code', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg);
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin-top: 6px;
+  word-break: break-all;
+}
+
+/* Tabs within panels */
+.sub-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+.sub-tab {
+  padding: 8px 16px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+}
+.sub-tab:hover { color: var(--text); }
+.sub-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Learn mode */
+.learn-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: pulse 1s infinite;
+  margin-right: 6px;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.separator {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+.preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MIDI Lab</h1>
+  <span id="conn-status" class="status disconnected">No MIDI</span>
+  <div style="flex:1"></div>
+  <button onclick="exportConfig()" class="primary">Export Config</button>
+</header>
+
+<div class="layout">
+  <!-- LEFT COLUMN -->
+  <div class="panel">
+    <div class="sub-tabs">
+      <div class="sub-tab active" onclick="switchTab(this,'left','tab-connection')">Connection</div>
+      <div class="sub-tab" onclick="switchTab(this,'left','tab-monitor')">Monitor</div>
+      <div class="sub-tab" onclick="switchTab(this,'left','tab-sysex')">SysEx</div>
+      <div class="sub-tab" onclick="switchTab(this,'left','tab-cc')">CC Sender</div>
+    </div>
+
+    <!-- Connection -->
+    <div id="tab-connection" class="tab-content active">
+      <div class="panel-body">
+        <div class="row">
+          <label>Input</label>
+          <select id="midi-in"><option>-- request MIDI access --</option></select>
+        </div>
+        <div class="row">
+          <label>Output</label>
+          <select id="midi-out"><option>-- request MIDI access --</option></select>
+        </div>
+        <div class="row">
+          <button id="btn-request" class="primary" onclick="requestMIDI()">Request MIDI Access</button>
+        </div>
+        <div class="separator"></div>
+        <div class="row">
+          <label>DAW Mode</label>
+          <button id="btn-daw-on" class="success" onclick="sendDAWMode(true)">ON</button>
+          <button id="btn-daw-off" class="danger" onclick="sendDAWMode(false)">OFF</button>
+        </div>
+        <div class="separator"></div>
+        <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Relative Encoders</h4>
+        <div class="row">
+          <label>Row 1</label>
+          <button onclick="sendRelativeMode(1,true)" class="btn-sm success">ON</button>
+          <button onclick="sendRelativeMode(1,false)" class="btn-sm danger">OFF</button>
+        </div>
+        <div class="row">
+          <label>Row 2</label>
+          <button onclick="sendRelativeMode(2,true)" class="btn-sm success">ON</button>
+          <button onclick="sendRelativeMode(2,false)" class="btn-sm danger">OFF</button>
+        </div>
+        <div class="row">
+          <label>Row 3</label>
+          <button onclick="sendRelativeMode(3,true)" class="btn-sm success">ON</button>
+          <button onclick="sendRelativeMode(3,false)" class="btn-sm danger">OFF</button>
+        </div>
+        <div class="separator"></div>
+        <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Auto-Init Sequence</h4>
+        <div class="row">
+          <button onclick="runInitSequence()" class="primary">Run Full Init (DAW + Rel + Screen)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monitor -->
+    <div id="tab-monitor" class="tab-content">
+      <div class="panel-header">
+        <span>MIDI Monitor</span>
+        <div style="display:flex;gap:4px;">
+          <button id="btn-learn" class="btn-sm" onclick="toggleLearn()">Learn</button>
+          <button class="btn-sm" onclick="clearMonitor()">Clear</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="row">
+          <label>Filter</label>
+          <button class="btn-sm filter-btn active" data-filter="all" onclick="setFilter(this)">All</button>
+          <button class="btn-sm filter-btn" data-filter="cc" onclick="setFilter(this)">CC</button>
+          <button class="btn-sm filter-btn" data-filter="note" onclick="setFilter(this)">Note</button>
+          <button class="btn-sm filter-btn" data-filter="sysex" onclick="setFilter(this)">SysEx</button>
+        </div>
+        <div id="learn-display" style="display:none;margin-bottom:8px;font-size:12px;">
+          <span class="learn-indicator"></span>
+          Listening... move a control. Last: <strong id="learn-result">--</strong>
+        </div>
+        <div id="monitor-log"></div>
+      </div>
+    </div>
+
+    <!-- SysEx Workbench -->
+    <div id="tab-sysex" class="tab-content">
+      <div class="panel-header">SysEx Workbench</div>
+      <div class="panel-body">
+        <textarea id="sysex-input" placeholder="F0 00 20 29 02 15 ... F7" rows="2"></textarea>
+        <div class="row" style="margin-top:8px;">
+          <button class="primary" onclick="sendRawSysEx()">Send</button>
+        </div>
+        <div class="separator"></div>
+        <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Presets (LCXL3)</h4>
+        <div class="preset-grid">
+          <button class="btn-sm" onclick="loadPreset('daw-on')">DAW ON</button>
+          <button class="btn-sm" onclick="loadPreset('daw-off')">DAW OFF</button>
+          <button class="btn-sm" onclick="loadPreset('rel2-on')">Rel Row2 ON</button>
+          <button class="btn-sm" onclick="loadPreset('rel2-off')">Rel Row2 OFF</button>
+          <button class="btn-sm" onclick="loadPreset('rel3-on')">Rel Row3 ON</button>
+          <button class="btn-sm" onclick="loadPreset('rel3-off')">Rel Row3 OFF</button>
+        </div>
+        <div class="separator"></div>
+        <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Response Log</h4>
+        <div id="sysex-log" class="hex-preview" style="max-height:150px;overflow-y:auto;">--</div>
+      </div>
+    </div>
+
+    <!-- CC Sender -->
+    <div id="tab-cc" class="tab-content">
+      <div class="panel-header">CC Sender</div>
+      <div class="panel-body">
+        <div class="row">
+          <label>Channel</label>
+          <input type="number" id="cc-channel" value="1" min="1" max="16" style="width:60px;flex:none;">
+        </div>
+        <div class="row">
+          <label>CC #</label>
+          <input type="number" id="cc-number" value="0" min="0" max="127" style="width:60px;flex:none;">
+        </div>
+        <div class="row">
+          <label>Value</label>
+          <input type="range" id="cc-value" min="0" max="127" value="0">
+          <span id="cc-value-display" style="font-size:12px;min-width:30px;">0</span>
+        </div>
+        <div class="row">
+          <label></label>
+          <label style="min-width:auto;"><input type="checkbox" id="cc-live"> Live (send on slide)</label>
+        </div>
+        <div class="row">
+          <button class="primary" onclick="sendCC()">Send CC</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="panel">
+    <div class="sub-tabs">
+      <div class="sub-tab active" onclick="switchTab(this,'right','tab-screen')">Screen</div>
+      <div class="sub-tab" onclick="switchTab(this,'right','tab-leds')">LEDs</div>
+      <div class="sub-tab" onclick="switchTab(this,'right','tab-pages')">Pages</div>
+    </div>
+
+    <!-- OLED Screen -->
+    <div id="tab-screen" class="tab-content active">
+      <div class="panel-header">OLED Screen Writer</div>
+      <div class="panel-body">
+        <div class="row">
+          <label>Target</label>
+          <input type="text" id="screen-target" value="0x35" style="width:60px;flex:none;">
+        </div>
+        <div class="row">
+          <label>Arrange</label>
+          <input type="number" id="screen-arrange" value="1" min="0" max="10" style="width:60px;flex:none;">
+        </div>
+        <div class="separator"></div>
+        <div class="row">
+          <label>Line 1</label>
+          <input type="text" id="screen-line1" placeholder="Hello" maxlength="20">
+        </div>
+        <div class="row">
+          <label>Line 2</label>
+          <input type="text" id="screen-line2" placeholder="MIDI Lab" maxlength="20">
+        </div>
+        <div class="row">
+          <button class="primary" onclick="sendScreen()">Send to Screen</button>
+        </div>
+        <div class="hex-preview" id="screen-hex">--</div>
+      </div>
+    </div>
+
+    <!-- RGB LEDs -->
+    <div id="tab-leds" class="tab-content">
+      <div class="panel-header">
+        <span>RGB LED Control</span>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <input type="color" id="fill-color" value="#7c6aef">
+          <button class="btn-sm" onclick="fillAllLEDs()">Fill All</button>
+          <button class="btn-sm danger" onclick="clearAllLEDs()">Clear</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="row">
+          <label>CC Range</label>
+          <input type="number" id="led-cc-start" value="37" min="0" max="127" style="width:60px;flex:none;">
+          <span style="font-size:12px;">to</span>
+          <input type="number" id="led-cc-end" value="52" min="0" max="127" style="width:60px;flex:none;">
+          <button class="btn-sm" onclick="rebuildLEDGrid()">Update</button>
+        </div>
+        <div id="led-grid" class="led-grid"></div>
+        <input type="color" id="led-picker" style="display:none;">
+        <div class="separator"></div>
+        <div class="row">
+          <label>Manual</label>
+          <input type="number" id="led-manual-cc" value="37" min="0" max="127" style="width:60px;flex:none;">
+          <input type="color" id="led-manual-color" value="#00ff00">
+          <button class="btn-sm primary" onclick="sendManualLED()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pages -->
+    <div id="tab-pages" class="tab-content">
+      <div class="panel-header">
+        <span>Pages</span>
+        <button class="btn-sm" onclick="addPage()">+ Add Page</button>
+      </div>
+      <div class="panel-body">
+        <div class="page-tabs" id="page-tabs"></div>
+        <div id="page-editor">
+          <div class="row">
+            <label>Name</label>
+            <input type="text" id="page-name" placeholder="Page name">
+          </div>
+          <div class="row">
+            <label>Screen L1</label>
+            <input type="text" id="page-screen-l1" placeholder="Line 1 text">
+          </div>
+          <div class="row">
+            <label>Screen L2</label>
+            <input type="text" id="page-screen-l2" placeholder="Line 2 text">
+          </div>
+          <div class="separator"></div>
+          <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Button Mappings</h4>
+          <div id="page-buttons"></div>
+          <div class="row">
+            <button class="btn-sm" onclick="addPageButton()">+ Add Button</button>
+          </div>
+          <div class="separator"></div>
+          <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Encoder Config</h4>
+          <div class="row">
+            <label>Row 1</label>
+            <select id="page-enc-row1" style="width:100px;flex:none;">
+              <option value="absolute">Absolute</option>
+              <option value="relative">Relative</option>
+            </select>
+          </div>
+          <div class="row">
+            <label>Row 2</label>
+            <select id="page-enc-row2" style="width:100px;flex:none;">
+              <option value="absolute">Absolute</option>
+              <option value="relative" selected>Relative</option>
+            </select>
+          </div>
+          <div class="row">
+            <label>Row 3</label>
+            <select id="page-enc-row3" style="width:100px;flex:none;">
+              <option value="absolute">Absolute</option>
+              <option value="relative" selected>Relative</option>
+            </select>
+          </div>
+          <div class="separator"></div>
+          <div class="row">
+            <button class="primary" onclick="applyPage()">Apply Page</button>
+            <button class="danger" onclick="deletePage()">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ───
+let midiAccess = null;
+let activeInput = null;
+let activeOutput = null;
+let learnMode = false;
+let monitorFilter = 'all';
+let monitorEntries = [];
+const MAX_LOG = 500;
+
+// Pages
+let pages = [{
+  name: 'Default',
+  screenL1: 'MIDI Lab',
+  screenL2: 'Ready',
+  buttons: [],
+  encoders: { row1: 'absolute', row2: 'relative', row3: 'relative' },
+  leds: {}
+}];
+let currentPage = 0;
+
+// LED state
+let ledColors = {}; // cc -> {r,g,b}
+let activeLedCC = null;
+
+// ─── MIDI Access ───
+async function requestMIDI() {
+  try {
+    midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+    populateDevices();
+    midiAccess.onstatechange = populateDevices;
+    document.getElementById('conn-status').textContent = 'MIDI Ready';
+    document.getElementById('conn-status').className = 'status connected';
+  } catch (e) {
+    alert('MIDI access denied: ' + e.message);
+  }
+}
+
+function populateDevices() {
+  const inSel = document.getElementById('midi-in');
+  const outSel = document.getElementById('midi-out');
+  inSel.innerHTML = '<option value="">-- select input --</option>';
+  outSel.innerHTML = '<option value="">-- select output --</option>';
+
+  for (const [id, port] of midiAccess.inputs) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = port.name;
+    if (port.name.includes('MIDIIN2') && port.name.includes('Launch Control')) opt.selected = true;
+    inSel.appendChild(opt);
+  }
+  for (const [id, port] of midiAccess.outputs) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = port.name;
+    if (port.name.includes('MIDIOUT2') && port.name.includes('Launch Control')) opt.selected = true;
+    outSel.appendChild(opt);
+  }
+
+  inSel.onchange = connectInput;
+  outSel.onchange = connectOutput;
+  connectInput();
+  connectOutput();
+}
+
+function connectInput() {
+  if (activeInput) activeInput.onmidimessage = null;
+  const id = document.getElementById('midi-in').value;
+  if (!id || !midiAccess) return;
+  activeInput = midiAccess.inputs.get(id);
+  if (activeInput) activeInput.onmidimessage = onMIDIMessage;
+}
+
+function connectOutput() {
+  const id = document.getElementById('midi-out').value;
+  if (!id || !midiAccess) return;
+  activeOutput = midiAccess.outputs.get(id);
+}
+
+// ─── MIDI Message Handler ───
+function onMIDIMessage(e) {
+  const data = e.data;
+  const now = new Date();
+  const ts = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0');
+  const hex = Array.from(data).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+
+  let type = 'other';
+  let ch = '--';
+  let d1 = '--';
+  let d2 = '--';
+
+  if (data[0] >= 0xB0 && data[0] <= 0xBF) {
+    type = 'cc';
+    ch = (data[0] & 0x0F) + 1;
+    d1 = data[1];
+    d2 = data[2];
+  } else if (data[0] >= 0x90 && data[0] <= 0x9F) {
+    type = 'note';
+    ch = (data[0] & 0x0F) + 1;
+    d1 = data[1];
+    d2 = data[2];
+  } else if (data[0] >= 0x80 && data[0] <= 0x8F) {
+    type = 'note';
+    ch = (data[0] & 0x0F) + 1;
+    d1 = data[1];
+    d2 = 0;
+  } else if (data[0] === 0xF0) {
+    type = 'sysex';
+  }
+
+  const entry = { ts, type, ch, d1, d2, hex };
+  monitorEntries.push(entry);
+  if (monitorEntries.length > MAX_LOG) monitorEntries.shift();
+
+  if (learnMode && type === 'cc') {
+    document.getElementById('learn-result').textContent = `CC#${d1} Ch${ch} Val${d2}`;
+  }
+
+  renderMonitor();
+
+  // Fire page callbacks
+  if (type === 'cc' && pages[currentPage]) {
+    handlePageCC(ch, d1, d2);
+  }
+}
+
+function renderMonitor() {
+  const log = document.getElementById('monitor-log');
+  const filtered = monitorFilter === 'all'
+    ? monitorEntries
+    : monitorEntries.filter(e => e.type === monitorFilter);
+
+  const last100 = filtered.slice(-100);
+  log.innerHTML = last100.map((e, i) => {
+    const isNew = i === last100.length - 1;
+    return `<div class="entry${isNew ? ' flash' : ''}">
+      <span>${e.ts}</span>
+      <span class="type ${e.type}">${e.type.toUpperCase()}</span>
+      <span>${e.ch}</span>
+      <span>${e.d1}</span>
+      <span>${e.d2}</span>
+      <span style="color:var(--text-dim)">${e.hex}</span>
+    </div>`;
+  }).join('');
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearMonitor() {
+  monitorEntries = [];
+  document.getElementById('monitor-log').innerHTML = '';
+}
+
+function setFilter(btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  monitorFilter = btn.dataset.filter;
+  renderMonitor();
+}
+
+function toggleLearn() {
+  learnMode = !learnMode;
+  document.getElementById('btn-learn').classList.toggle('active', learnMode);
+  document.getElementById('learn-display').style.display = learnMode ? 'block' : 'none';
+}
+
+// ─── Send Helpers ───
+function send(data) {
+  if (!activeOutput) { alert('No MIDI output selected'); return false; }
+  activeOutput.send(data);
+  return true;
+}
+
+function sendDAWMode(on) {
+  send([0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x02, on ? 0x7F : 0x00, 0xF7]);
+}
+
+function sendRelativeMode(row, on) {
+  const ccMap = { 1: 0x45, 2: 0x48, 3: 0x49 };
+  send([0xB6, ccMap[row], on ? 0x7F : 0x00]);
+}
+
+function runInitSequence() {
+  if (!activeOutput) { alert('No MIDI output selected'); return; }
+  // 1. DAW mode ON
+  sendDAWMode(true);
+  // 2. Relative encoders rows 2+3
+  setTimeout(() => {
+    sendRelativeMode(2, true);
+    sendRelativeMode(3, true);
+  }, 100);
+  // 3. Screen
+  setTimeout(() => {
+    document.getElementById('screen-line1').value = 'MIDI Lab';
+    document.getElementById('screen-line2').value = 'Ready';
+    sendScreen();
+  }, 200);
+}
+
+// ─── Screen ───
+function sendScreen() {
+  const target = parseInt(document.getElementById('screen-target').value);
+  const arrange = parseInt(document.getElementById('screen-arrange').value);
+  const line1 = document.getElementById('screen-line1').value;
+  const line2 = document.getElementById('screen-line2').value;
+
+  // Step 1: configure display
+  const configMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x04, target, arrange, 0xF7];
+  send(configMsg);
+
+  // Step 2: set text
+  const textMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x06, target, 0x00];
+  for (let i = 0; i < line1.length; i++) textMsg.push(line1.charCodeAt(i) & 0x7F);
+  textMsg.push(0x00, 0x01);
+  for (let i = 0; i < line2.length; i++) textMsg.push(line2.charCodeAt(i) & 0x7F);
+  textMsg.push(0xF7);
+
+  setTimeout(() => send(textMsg), 50);
+
+  // Hex preview
+  const hex1 = configMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+  const hex2 = textMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+  document.getElementById('screen-hex').textContent = hex1 + '\n' + hex2;
+}
+
+// ─── RGB LEDs ───
+function rebuildLEDGrid() {
+  const start = parseInt(document.getElementById('led-cc-start').value);
+  const end = parseInt(document.getElementById('led-cc-end').value);
+  const grid = document.getElementById('led-grid');
+  grid.innerHTML = '';
+  for (let cc = start; cc <= end; cc++) {
+    const btn = document.createElement('div');
+    btn.className = 'led-btn';
+    btn.dataset.cc = cc;
+    const color = ledColors[cc];
+    if (color) {
+      btn.style.background = `rgb(${Math.round(color.r/127*255)},${Math.round(color.g/127*255)},${Math.round(color.b/127*255)})`;
+    }
+    btn.innerHTML = `<span class="cc-label">${cc}</span>`;
+    btn.onclick = () => pickLEDColor(cc, btn);
+    grid.appendChild(btn);
+  }
+}
+
+function pickLEDColor(cc, btn) {
+  activeLedCC = cc;
+  const picker = document.getElementById('led-picker');
+  picker.click();
+  picker.onchange = () => {
+    const hex = picker.value;
+    const r = Math.round(parseInt(hex.slice(1, 3), 16) / 255 * 127);
+    const g = Math.round(parseInt(hex.slice(3, 5), 16) / 255 * 127);
+    const b = Math.round(parseInt(hex.slice(5, 7), 16) / 255 * 127);
+    sendLED(cc, r, g, b);
+    btn.style.background = hex;
+    ledColors[cc] = { r, g, b };
+  };
+}
+
+function sendLED(cc, r, g, b) {
+  send([0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x01, cc, r, g, b, 0xF7]);
+}
+
+function fillAllLEDs() {
+  const hex = document.getElementById('fill-color').value;
+  const r = Math.round(parseInt(hex.slice(1, 3), 16) / 255 * 127);
+  const g = Math.round(parseInt(hex.slice(3, 5), 16) / 255 * 127);
+  const b = Math.round(parseInt(hex.slice(5, 7), 16) / 255 * 127);
+  const start = parseInt(document.getElementById('led-cc-start').value);
+  const end = parseInt(document.getElementById('led-cc-end').value);
+  for (let cc = start; cc <= end; cc++) {
+    sendLED(cc, r, g, b);
+    ledColors[cc] = { r, g, b };
+  }
+  rebuildLEDGrid();
+}
+
+function clearAllLEDs() {
+  const start = parseInt(document.getElementById('led-cc-start').value);
+  const end = parseInt(document.getElementById('led-cc-end').value);
+  for (let cc = start; cc <= end; cc++) {
+    sendLED(cc, 0, 0, 0);
+    delete ledColors[cc];
+  }
+  rebuildLEDGrid();
+}
+
+function sendManualLED() {
+  const cc = parseInt(document.getElementById('led-manual-cc').value);
+  const hex = document.getElementById('led-manual-color').value;
+  const r = Math.round(parseInt(hex.slice(1, 3), 16) / 255 * 127);
+  const g = Math.round(parseInt(hex.slice(3, 5), 16) / 255 * 127);
+  const b = Math.round(parseInt(hex.slice(5, 7), 16) / 255 * 127);
+  sendLED(cc, r, g, b);
+  ledColors[cc] = { r, g, b };
+  rebuildLEDGrid();
+}
+
+// ─── CC Sender ───
+const ccSlider = document.getElementById('cc-value');
+const ccDisplay = document.getElementById('cc-value-display');
+ccSlider.oninput = () => {
+  ccDisplay.textContent = ccSlider.value;
+  if (document.getElementById('cc-live').checked) sendCC();
+};
+
+function sendCC() {
+  const ch = parseInt(document.getElementById('cc-channel').value) - 1;
+  const cc = parseInt(document.getElementById('cc-number').value);
+  const val = parseInt(ccSlider.value);
+  send([0xB0 | (ch & 0x0F), cc & 0x7F, val & 0x7F]);
+}
+
+// ─── SysEx Workbench ───
+function sendRawSysEx() {
+  const input = document.getElementById('sysex-input').value.trim();
+  if (!input) return;
+  let bytes = input.split(/[\s,]+/).map(s => parseInt(s, 16)).filter(n => !isNaN(n));
+  if (bytes[0] !== 0xF0) bytes.unshift(0xF0);
+  if (bytes[bytes.length - 1] !== 0xF7) bytes.push(0xF7);
+  send(new Uint8Array(bytes));
+}
+
+const presets = {
+  'daw-on': 'F0 00 20 29 02 15 02 7F F7',
+  'daw-off': 'F0 00 20 29 02 15 02 00 F7',
+  'rel2-on': 'B6 48 7F',
+  'rel2-off': 'B6 48 00',
+  'rel3-on': 'B6 49 7F',
+  'rel3-off': 'B6 49 00',
+};
+
+function loadPreset(key) {
+  document.getElementById('sysex-input').value = presets[key];
+}
+
+// ─── Pages ───
+function renderPageTabs() {
+  const tabs = document.getElementById('page-tabs');
+  tabs.innerHTML = pages.map((p, i) =>
+    `<div class="page-tab${i === currentPage ? ' active' : ''}" onclick="selectPage(${i})">${p.name}</div>`
+  ).join('');
+  loadPageEditor();
+}
+
+function selectPage(i) {
+  saveCurrentPage();
+  currentPage = i;
+  renderPageTabs();
+}
+
+function addPage() {
+  saveCurrentPage();
+  pages.push({
+    name: 'Page ' + (pages.length + 1),
+    screenL1: '',
+    screenL2: '',
+    buttons: [],
+    encoders: { row1: 'absolute', row2: 'relative', row3: 'relative' },
+    leds: {}
+  });
+  currentPage = pages.length - 1;
+  renderPageTabs();
+}
+
+function deletePage() {
+  if (pages.length <= 1) return;
+  pages.splice(currentPage, 1);
+  currentPage = Math.min(currentPage, pages.length - 1);
+  renderPageTabs();
+}
+
+function loadPageEditor() {
+  const p = pages[currentPage];
+  if (!p) return;
+  document.getElementById('page-name').value = p.name;
+  document.getElementById('page-screen-l1').value = p.screenL1;
+  document.getElementById('page-screen-l2').value = p.screenL2;
+  document.getElementById('page-enc-row1').value = p.encoders.row1;
+  document.getElementById('page-enc-row2').value = p.encoders.row2;
+  document.getElementById('page-enc-row3').value = p.encoders.row3;
+  renderPageButtons();
+}
+
+function saveCurrentPage() {
+  const p = pages[currentPage];
+  if (!p) return;
+  p.name = document.getElementById('page-name').value || 'Untitled';
+  p.screenL1 = document.getElementById('page-screen-l1').value;
+  p.screenL2 = document.getElementById('page-screen-l2').value;
+  p.encoders.row1 = document.getElementById('page-enc-row1').value;
+  p.encoders.row2 = document.getElementById('page-enc-row2').value;
+  p.encoders.row3 = document.getElementById('page-enc-row3').value;
+  // buttons saved inline
+}
+
+function renderPageButtons() {
+  const p = pages[currentPage];
+  const container = document.getElementById('page-buttons');
+  container.innerHTML = p.buttons.map((b, i) =>
+    `<div class="row">
+      <input type="text" value="${b.name}" onchange="pages[${currentPage}].buttons[${i}].name=this.value" placeholder="name" style="width:80px;flex:none;">
+      <label style="min-width:auto">CC</label>
+      <input type="number" value="${b.cc}" onchange="pages[${currentPage}].buttons[${i}].cc=+this.value" style="width:50px;flex:none;">
+      <label style="min-width:auto">Ch</label>
+      <input type="number" value="${b.channel}" onchange="pages[${currentPage}].buttons[${i}].channel=+this.value" style="width:40px;flex:none;">
+      <input type="color" value="${rgbToHex(b.led)}" onchange="pages[${currentPage}].buttons[${i}].led=hexToRgb7(this.value)">
+      <button class="btn-sm danger" onclick="pages[${currentPage}].buttons.splice(${i},1);renderPageButtons();">x</button>
+    </div>`
+  ).join('');
+}
+
+function addPageButton() {
+  pages[currentPage].buttons.push({ name: 'btn', cc: 37, channel: 1, led: { r: 0, g: 100, b: 10 } });
+  renderPageButtons();
+}
+
+function applyPage() {
+  saveCurrentPage();
+  const p = pages[currentPage];
+  // Send screen
+  document.getElementById('screen-line1').value = p.screenL1;
+  document.getElementById('screen-line2').value = p.screenL2;
+  sendScreen();
+  // Set encoder modes
+  sendRelativeMode(1, p.encoders.row1 === 'relative');
+  sendRelativeMode(2, p.encoders.row2 === 'relative');
+  sendRelativeMode(3, p.encoders.row3 === 'relative');
+  // Set LED colors
+  for (const b of p.buttons) {
+    sendLED(b.cc, b.led.r, b.led.g, b.led.b);
+    ledColors[b.cc] = b.led;
+  }
+  rebuildLEDGrid();
+}
+
+function handlePageCC(ch, cc, val) {
+  // placeholder for page-specific CC handling
+  // extend as needed for button callbacks etc.
+}
+
+// ─── Export ───
+function exportConfig() {
+  saveCurrentPage();
+  const config = {
+    device: 'Launch Control XL MK3',
+    daw_mode: true,
+    sysex_header: [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15],
+    pages: pages.map(p => ({
+      name: p.name,
+      screen: {
+        line1: p.screenL1,
+        line2: p.screenL2,
+        target: document.getElementById('screen-target').value,
+        arrangement: parseInt(document.getElementById('screen-arrange').value)
+      },
+      buttons: Object.fromEntries(p.buttons.map(b => [b.name, {
+        cc: b.cc,
+        channel: b.channel,
+        led_color: [b.led.r, b.led.g, b.led.b]
+      }])),
+      encoders: {
+        row1: { ccs: [13,14,15,16,17,18,19,20], channel: 16, mode: p.encoders.row1 },
+        row2: { ccs: [29,30,31,32,33,34,35,36], channel: 16, mode: p.encoders.row2 },
+        row3: { ccs: [45,46,47,48,49,50,51,52], channel: 16, mode: p.encoders.row3 }
+      },
+      faders: { ccs: [77,78,79,80,81,82,83,84], channel: 16 }
+    })),
+    leds: Object.fromEntries(Object.entries(ledColors).map(([cc, c]) => [cc, [c.r, c.g, c.b]]))
+  };
+
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'midi-lab-config.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ─── Tab Switching ───
+function switchTab(el, side, tabId) {
+  const parent = el.closest('.panel');
+  parent.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  parent.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// ─── Utilities ───
+function rgbToHex(c) {
+  const r = Math.round(c.r / 127 * 255);
+  const g = Math.round(c.g / 127 * 255);
+  const b = Math.round(c.b / 127 * 255);
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToRgb7(hex) {
+  return {
+    r: Math.round(parseInt(hex.slice(1, 3), 16) / 255 * 127),
+    g: Math.round(parseInt(hex.slice(3, 5), 16) / 255 * 127),
+    b: Math.round(parseInt(hex.slice(5, 7), 16) / 255 * 127)
+  };
+}
+
+// ─── Init ───
+rebuildLEDGrid();
+renderPageTabs();
+
+// Auto-request MIDI on load if available
+if (navigator.requestMIDIAccess) {
+  requestMIDI();
+}
+</script>
+</body>
+</html>
