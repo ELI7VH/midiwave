@@ -2075,6 +2075,11 @@ function sparkle() {
   console.log('[midiwave] SPARKLE MODE — 10 seconds of magic');
   document.getElementById('info-learn-status').textContent = 'SPARKLE MODE';
 
+  // Prime the screen — clear the DAW overlay buffer
+  sendScreen3Row(port, '', '', '');
+  setTimeout(() => sendScreen3Row(port, '', '', ''), 100);
+  setTimeout(() => sendScreen3Row(port, '', '', ''), 200);
+
   // Text scroll timer — new word every ~900ms
   const textInterval = setInterval(() => {
     if (wordIndex < words.length) {
