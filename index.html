@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MIDI Lab</title>
+<title>midiwave</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -18,92 +18,245 @@
   --red: #ef4444;
   --green: #22c55e;
   --yellow: #eab308;
+  --pink: #ec4899;
 }
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
 }
 header {
-  padding: 16px 24px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
-header h1 { font-size: 20px; font-weight: 600; }
-header .status {
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 12px;
+header h1 { font-size: 18px; font-weight: 600; }
+.status {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 10px;
   background: var(--surface2);
 }
-header .status.connected { color: var(--green); }
-header .status.disconnected { color: var(--red); }
-.layout {
+.status.connected { color: var(--green); }
+.status.disconnected { color: var(--red); }
+.spacer { flex: 1; }
+
+/* Layout */
+.main {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--border);
-  height: calc(100vh - 57px);
+  grid-template-columns: 1fr 320px;
+  height: calc(100vh - 49px);
 }
-.panel {
-  background: var(--surface);
+.controller-view {
+  padding: 20px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-.panel-header {
-  padding: 12px 16px;
-  font-size: 13px;
-  font-weight: 600;
+.sidebar {
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  padding: 8px 14px;
+  font-size: 11px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-body { display: none; flex: 1; overflow-y: auto; padding: 12px; }
+.tab-body.active { display: block; }
+
+/* Controller visual */
+.lcxl3 {
+  background: #1a1a2a;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 700px;
+  width: 100%;
+}
+.lcxl3-label {
+  font-size: 10px;
   color: var(--text-dim);
-  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.row-8 {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Encoders */
+.encoder {
+  aspect-ratio: 1;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: #222;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  background: var(--surface);
-  z-index: 1;
-}
-.panel-body { padding: 16px; }
-.row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
-.row.wrap { flex-wrap: wrap; }
-label {
-  font-size: 12px;
+  justify-content: center;
+  font-size: 9px;
   color: var(--text-dim);
-  min-width: 70px;
+  position: relative;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  max-width: 60px;
+  margin: 0 auto;
+  width: 100%;
 }
+.encoder:hover { border-color: var(--accent); }
+.encoder.active { border-color: var(--yellow); box-shadow: 0 0 8px rgba(234,179,8,0.3); }
+.encoder.mapped { border-color: var(--accent2); }
+.encoder .val {
+  position: absolute;
+  bottom: -14px;
+  font-size: 9px;
+  color: var(--text-dim);
+}
+
+/* Faders */
+.fader-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.fader-track {
+  width: 8px;
+  height: 80px;
+  background: #222;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+}
+.fader-fill {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: height 0.05s;
+}
+.fader-track.active { border-color: var(--yellow); }
+.fader-track.mapped { border-color: var(--accent2); }
+.fader-label {
+  font-size: 9px;
+  color: var(--text-dim);
+}
+
+/* Buttons */
+.btn-pad {
+  aspect-ratio: 1.6;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: #222;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--text-dim);
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+.btn-pad:hover { border-color: var(--accent); }
+.btn-pad.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.2); }
+.btn-pad.mapped { border-color: var(--accent2); }
+.btn-pad .cc-tag {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 8px;
+  opacity: 0.4;
+}
+
+/* Transport */
+.transport {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.transport-btn {
+  width: 50px;
+  height: 36px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: #222;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: all 0.15s;
+}
+.transport-btn:hover { border-color: var(--accent); }
+.transport-btn.mapped { border-color: var(--accent2); }
+
+/* Sections */
+.section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+.section-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 8px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Sidebar controls */
+.row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+label { font-size: 11px; color: var(--text-dim); min-width: 55px; }
 select, input[type="text"], input[type="number"] {
   background: var(--surface2);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 12px;
   flex: 1;
   min-width: 0;
 }
-select { cursor: pointer; }
 input[type="color"] {
-  width: 36px;
-  height: 28px;
+  width: 32px; height: 26px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface2);
-  cursor: pointer;
-  padding: 0;
+  cursor: pointer; padding: 0;
 }
 input[type="range"] { flex: 1; accent-color: var(--accent); }
 button {
   background: var(--surface2);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 6px 14px;
+  padding: 5px 10px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s;
@@ -114,192 +267,220 @@ button.primary:hover { opacity: 0.85; }
 button.danger { border-color: var(--red); color: var(--red); }
 button.success { border-color: var(--green); color: var(--green); }
 button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn-sm { padding: 4px 8px; font-size: 11px; }
+.btn-sm { padding: 3px 7px; font-size: 10px; }
 
-/* MIDI Monitor */
+/* Monitor */
 #monitor-log {
   font-family: 'Cascadia Code', 'Fira Code', monospace;
-  font-size: 11px;
-  max-height: 300px;
+  font-size: 10px;
+  max-height: 100%;
   overflow-y: auto;
   background: var(--bg);
   border-radius: 4px;
   padding: 4px;
+  flex: 1;
 }
 #monitor-log .entry {
-  padding: 2px 6px;
+  padding: 1px 4px;
   border-bottom: 1px solid #1a1a2a;
   display: grid;
-  grid-template-columns: 70px 50px 30px 40px 40px 1fr;
-  gap: 8px;
+  grid-template-columns: 65px 40px 25px 30px 30px 1fr;
+  gap: 6px;
 }
 #monitor-log .entry.flash { background: rgba(124, 106, 239, 0.15); }
-#monitor-log .entry .type { font-weight: 600; }
-#monitor-log .entry .type.cc { color: var(--accent2); }
-#monitor-log .entry .type.note { color: var(--yellow); }
-#monitor-log .entry .type.sysex { color: var(--accent); }
-
-/* LED Grid */
-.led-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 6px;
-  margin: 10px 0;
-}
-.led-btn {
-  aspect-ratio: 1;
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  background: #222;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  color: var(--text-dim);
-  transition: border-color 0.15s;
-  position: relative;
-}
-.led-btn:hover { border-color: var(--accent); }
-.led-btn .cc-label {
-  position: absolute;
-  bottom: 2px;
-  font-size: 9px;
-  opacity: 0.5;
-}
-
-/* Pages */
-.page-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-.page-tab {
-  padding: 4px 12px;
-  font-size: 11px;
-  border-radius: 4px;
-  cursor: pointer;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-}
-.page-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-
-/* SysEx workbench */
-#sysex-input {
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  resize: vertical;
-  min-height: 40px;
-}
+.type { font-weight: 600; }
+.type.cc { color: var(--accent2); }
+.type.note { color: var(--yellow); }
+.type.sysex { color: var(--accent); }
 
 /* Hex preview */
 .hex-preview {
   font-family: 'Cascadia Code', monospace;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
   background: var(--bg);
-  padding: 6px 8px;
+  padding: 6px;
   border-radius: 4px;
-  margin-top: 6px;
   word-break: break-all;
+  margin-top: 4px;
 }
 
-/* Tabs within panels */
-.sub-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
+/* SysEx textarea */
+#sysex-input {
+  font-family: 'Cascadia Code', monospace;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  resize: vertical;
+  min-height: 36px;
 }
-.sub-tab {
-  padding: 8px 16px;
-  font-size: 12px;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  color: var(--text-dim);
-}
-.sub-tab:hover { color: var(--text); }
-.sub-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.tab-content { display: none; }
-.tab-content.active { display: block; }
 
 /* Learn mode */
-.learn-indicator {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--red);
-  animation: pulse 1s infinite;
-  margin-right: 6px;
+.learn-active { animation: learnPulse 1.5s infinite; }
+@keyframes learnPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(234,179,8,0); }
+  50% { box-shadow: 0 0 12px 2px rgba(234,179,8,0.4); }
 }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--surface); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-.separator {
-  height: 1px;
-  background: var(--border);
-  margin: 12px 0;
+/* Selected element highlight */
+.selected-control {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
 }
 
-.preset-grid {
+/* Info bar */
+.info-bar {
+  padding: 6px 12px;
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-dim);
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  gap: 16px;
 }
+.info-bar span { display: flex; gap: 4px; }
+.preset-grid { display: flex; flex-wrap: wrap; gap: 3px; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>MIDI Lab</h1>
+  <h1>midiwave</h1>
   <span id="conn-status" class="status disconnected">No MIDI</span>
-  <div style="flex:1"></div>
-  <button onclick="exportConfig()" class="primary">Export Config</button>
+  <div class="spacer"></div>
+  <button id="btn-learn-all" onclick="toggleLearnAll()">Learn All</button>
+  <button onclick="sparkle()" style="background:linear-gradient(135deg,#f0f,#0ff,#ff0);border:none;color:#000;font-weight:bold;">Sparkle</button>
+  <button onclick="exportConfig()" class="primary">Export</button>
 </header>
 
-<div class="layout">
-  <!-- LEFT COLUMN -->
-  <div class="panel">
-    <div class="sub-tabs">
-      <div class="sub-tab active" onclick="switchTab(this,'left','tab-connection')">Connection</div>
-      <div class="sub-tab" onclick="switchTab(this,'left','tab-monitor')">Monitor</div>
-      <div class="sub-tab" onclick="switchTab(this,'left','tab-sysex')">SysEx</div>
-      <div class="sub-tab" onclick="switchTab(this,'left','tab-cc')">CC Sender</div>
+<div class="main">
+  <!-- LEFT: Controller Visual -->
+  <div class="controller-view">
+    <!-- Connection bar -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;width:100%;max-width:700px;align-items:center;">
+      <select id="midi-in" style="flex:1;"><option>-- request MIDI --</option></select>
+      <select id="midi-out" style="flex:1;"><option>-- request MIDI --</option></select>
+      <button onclick="requestMIDI()" class="primary btn-sm">Connect</button>
+      <button onclick="sendDAWMode(true)" class="success btn-sm">DAW ON</button>
+      <button onclick="sendDAWMode(false)" class="danger btn-sm">DAW OFF</button>
     </div>
 
-    <!-- Connection -->
-    <div id="tab-connection" class="tab-content active">
-      <div class="panel-body">
+    <!-- LCXL3 Visual -->
+    <div class="lcxl3">
+      <div class="lcxl3-label">Encoders Row 1</div>
+      <div class="row-8" id="enc-row1"></div>
+
+      <div class="lcxl3-label">Encoders Row 2</div>
+      <div class="row-8" id="enc-row2"></div>
+
+      <div class="lcxl3-label">Encoders Row 3</div>
+      <div class="row-8" id="enc-row3"></div>
+
+      <div class="section-divider"></div>
+
+      <div class="lcxl3-label">Faders</div>
+      <div class="row-8" id="fader-row" style="height:100px;"></div>
+
+      <div class="section-divider"></div>
+
+      <div class="lcxl3-label">Button Row 1 (Solo/Arm)</div>
+      <div class="row-8" id="btn-row1"></div>
+
+      <div class="lcxl3-label">Button Row 2 (Mute/Select)</div>
+      <div class="row-8" id="btn-row2"></div>
+
+      <div class="section-divider"></div>
+
+      <div class="transport" id="transport-row">
+        <div class="transport-btn" data-role="shift">SHIFT</div>
+        <div class="transport-btn" data-role="page-up">PG▲</div>
+        <div class="transport-btn" data-role="page-dn">PG▼</div>
+        <div class="transport-btn" data-role="track-l">◀TRK</div>
+        <div class="transport-btn" data-role="track-r">TRK▶</div>
+        <div class="transport-btn" data-role="mode">MODE</div>
+        <div class="transport-btn" data-role="play" style="color:var(--green);">PLAY</div>
+        <div class="transport-btn" data-role="rec" style="color:var(--red);">REC</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Sidebar -->
+  <div class="sidebar">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'tab-monitor')">Monitor</div>
+      <div class="tab" onclick="switchTab(this,'tab-control')">Control</div>
+      <div class="tab" onclick="switchTab(this,'tab-pages')">Pages</div>
+      <div class="tab" onclick="switchTab(this,'tab-sysex')">SysEx</div>
+      <div class="tab" onclick="switchTab(this,'tab-screen')">Screen</div>
+    </div>
+
+    <!-- Monitor -->
+    <div id="tab-monitor" class="tab-body active" style="display:flex;flex-direction:column;">
+      <div style="display:flex;gap:4px;margin-bottom:6px;">
+        <button class="btn-sm filter-btn active" data-filter="all" onclick="setFilter(this)">All</button>
+        <button class="btn-sm filter-btn" data-filter="cc" onclick="setFilter(this)">CC</button>
+        <button class="btn-sm filter-btn" data-filter="note" onclick="setFilter(this)">Note</button>
+        <button class="btn-sm filter-btn" data-filter="sysex" onclick="setFilter(this)">SysEx</button>
+        <div class="spacer"></div>
+        <button class="btn-sm" onclick="clearMonitor()">Clear</button>
+      </div>
+      <div id="monitor-log"></div>
+    </div>
+
+    <!-- Control panel -->
+    <div id="tab-control" class="tab-body">
+      <div id="selected-info" style="margin-bottom:8px;font-size:11px;color:var(--text-dim);">
+        Click a control on the LCXL3 visual to select it.
+      </div>
+      <div id="control-panel" style="display:none;">
         <div class="row">
-          <label>Input</label>
-          <select id="midi-in"><option>-- request MIDI access --</option></select>
+          <label>Name</label>
+          <input type="text" id="ctrl-name" placeholder="e.g. Volume" onchange="updateSelectedName()">
         </div>
         <div class="row">
-          <label>Output</label>
-          <select id="midi-out"><option>-- request MIDI access --</option></select>
+          <label>CC</label>
+          <span id="ctrl-cc" style="font-size:12px;font-weight:600;">--</span>
+          <label style="min-width:auto;margin-left:8px;">Ch</label>
+          <span id="ctrl-ch" style="font-size:12px;font-weight:600;">--</span>
         </div>
         <div class="row">
-          <button id="btn-request" class="primary" onclick="requestMIDI()">Request MIDI Access</button>
+          <label>LED</label>
+          <input type="range" id="ctrl-led-val" min="0" max="127" value="0" oninput="sendSelectedLED()" style="flex:1;">
+          <span id="ctrl-led-display" style="font-size:11px;min-width:24px;">0</span>
+          <button class="btn-sm danger" onclick="clearSelectedLED()">Off</button>
         </div>
-        <div class="separator"></div>
+        <div id="led-palette" style="display:grid;grid-template-columns:repeat(16,1fr);gap:1px;margin-bottom:8px;"></div>
+        <div class="section-divider"></div>
+        <div class="section-label">CC Sender</div>
         <div class="row">
-          <label>DAW Mode</label>
-          <button id="btn-daw-on" class="success" onclick="sendDAWMode(true)">ON</button>
-          <button id="btn-daw-off" class="danger" onclick="sendDAWMode(false)">OFF</button>
+          <label>Channel</label>
+          <input type="number" id="cc-channel" value="1" min="1" max="16" style="width:50px;flex:none;">
         </div>
-        <div class="separator"></div>
-        <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Relative Encoders</h4>
+        <div class="row">
+          <label>CC #</label>
+          <input type="number" id="cc-number" value="0" min="0" max="127" style="width:50px;flex:none;">
+        </div>
+        <div class="row">
+          <label>Value</label>
+          <input type="range" id="cc-value" min="0" max="127" value="0">
+          <span id="cc-value-display" style="font-size:11px;min-width:24px;">0</span>
+        </div>
+        <div class="row">
+          <label></label>
+          <label style="min-width:auto;"><input type="checkbox" id="cc-live"> Live</label>
+          <button class="btn-sm primary" onclick="sendCC()">Send CC</button>
+        </div>
+        <div class="section-divider"></div>
+        <div class="section-label">Relative Encoders</div>
         <div class="row">
           <label>Row 1</label>
           <button onclick="sendRelativeMode(1,true)" class="btn-sm success">ON</button>
@@ -315,252 +496,493 @@ button.active { background: var(--accent); border-color: var(--accent); color: #
           <button onclick="sendRelativeMode(3,true)" class="btn-sm success">ON</button>
           <button onclick="sendRelativeMode(3,false)" class="btn-sm danger">OFF</button>
         </div>
-        <div class="separator"></div>
-        <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Auto-Init Sequence</h4>
-        <div class="row">
-          <button onclick="runInitSequence()" class="primary">Run Full Init (DAW + Rel + Screen)</button>
-        </div>
       </div>
     </div>
 
-    <!-- Monitor -->
-    <div id="tab-monitor" class="tab-content">
-      <div class="panel-header">
-        <span>MIDI Monitor</span>
-        <div style="display:flex;gap:4px;">
-          <button id="btn-learn" class="btn-sm" onclick="toggleLearn()">Learn</button>
-          <button class="btn-sm" onclick="clearMonitor()">Clear</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div class="row">
-          <label>Filter</label>
-          <button class="btn-sm filter-btn active" data-filter="all" onclick="setFilter(this)">All</button>
-          <button class="btn-sm filter-btn" data-filter="cc" onclick="setFilter(this)">CC</button>
-          <button class="btn-sm filter-btn" data-filter="note" onclick="setFilter(this)">Note</button>
-          <button class="btn-sm filter-btn" data-filter="sysex" onclick="setFilter(this)">SysEx</button>
-        </div>
-        <div id="learn-display" style="display:none;margin-bottom:8px;font-size:12px;">
-          <span class="learn-indicator"></span>
-          Listening... move a control. Last: <strong id="learn-result">--</strong>
-        </div>
-        <div id="monitor-log"></div>
-      </div>
-    </div>
-
-    <!-- SysEx Workbench -->
-    <div id="tab-sysex" class="tab-content">
-      <div class="panel-header">SysEx Workbench</div>
-      <div class="panel-body">
-        <textarea id="sysex-input" placeholder="F0 00 20 29 02 15 ... F7" rows="2"></textarea>
-        <div class="row" style="margin-top:8px;">
-          <button class="primary" onclick="sendRawSysEx()">Send</button>
-        </div>
-        <div class="separator"></div>
-        <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Presets (LCXL3)</h4>
-        <div class="preset-grid">
-          <button class="btn-sm" onclick="loadPreset('daw-on')">DAW ON</button>
-          <button class="btn-sm" onclick="loadPreset('daw-off')">DAW OFF</button>
-          <button class="btn-sm" onclick="loadPreset('rel2-on')">Rel Row2 ON</button>
-          <button class="btn-sm" onclick="loadPreset('rel2-off')">Rel Row2 OFF</button>
-          <button class="btn-sm" onclick="loadPreset('rel3-on')">Rel Row3 ON</button>
-          <button class="btn-sm" onclick="loadPreset('rel3-off')">Rel Row3 OFF</button>
-        </div>
-        <div class="separator"></div>
-        <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Response Log</h4>
-        <div id="sysex-log" class="hex-preview" style="max-height:150px;overflow-y:auto;">--</div>
-      </div>
-    </div>
-
-    <!-- CC Sender -->
-    <div id="tab-cc" class="tab-content">
-      <div class="panel-header">CC Sender</div>
-      <div class="panel-body">
-        <div class="row">
-          <label>Channel</label>
-          <input type="number" id="cc-channel" value="1" min="1" max="16" style="width:60px;flex:none;">
-        </div>
-        <div class="row">
-          <label>CC #</label>
-          <input type="number" id="cc-number" value="0" min="0" max="127" style="width:60px;flex:none;">
-        </div>
-        <div class="row">
-          <label>Value</label>
-          <input type="range" id="cc-value" min="0" max="127" value="0">
-          <span id="cc-value-display" style="font-size:12px;min-width:30px;">0</span>
-        </div>
-        <div class="row">
-          <label></label>
-          <label style="min-width:auto;"><input type="checkbox" id="cc-live"> Live (send on slide)</label>
-        </div>
-        <div class="row">
-          <button class="primary" onclick="sendCC()">Send CC</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- RIGHT COLUMN -->
-  <div class="panel">
-    <div class="sub-tabs">
-      <div class="sub-tab active" onclick="switchTab(this,'right','tab-screen')">Screen</div>
-      <div class="sub-tab" onclick="switchTab(this,'right','tab-leds')">LEDs</div>
-      <div class="sub-tab" onclick="switchTab(this,'right','tab-pages')">Pages</div>
-    </div>
-
-    <!-- OLED Screen -->
-    <div id="tab-screen" class="tab-content active">
-      <div class="panel-header">OLED Screen Writer</div>
-      <div class="panel-body">
-        <div class="row">
-          <label>Target</label>
-          <input type="text" id="screen-target" value="0x35" style="width:60px;flex:none;">
-        </div>
-        <div class="row">
-          <label>Arrange</label>
-          <input type="number" id="screen-arrange" value="1" min="0" max="10" style="width:60px;flex:none;">
-        </div>
-        <div class="separator"></div>
-        <div class="row">
-          <label>Line 1</label>
-          <input type="text" id="screen-line1" placeholder="Hello" maxlength="20">
-        </div>
-        <div class="row">
-          <label>Line 2</label>
-          <input type="text" id="screen-line2" placeholder="MIDI Lab" maxlength="20">
-        </div>
-        <div class="row">
-          <button class="primary" onclick="sendScreen()">Send to Screen</button>
-        </div>
-        <div class="hex-preview" id="screen-hex">--</div>
-      </div>
-    </div>
-
-    <!-- RGB LEDs -->
-    <div id="tab-leds" class="tab-content">
-      <div class="panel-header">
-        <span>RGB LED Control</span>
-        <div style="display:flex;gap:4px;align-items:center;">
-          <input type="color" id="fill-color" value="#7c6aef">
-          <button class="btn-sm" onclick="fillAllLEDs()">Fill All</button>
-          <button class="btn-sm danger" onclick="clearAllLEDs()">Clear</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div class="row">
-          <label>CC Range</label>
-          <input type="number" id="led-cc-start" value="37" min="0" max="127" style="width:60px;flex:none;">
-          <span style="font-size:12px;">to</span>
-          <input type="number" id="led-cc-end" value="52" min="0" max="127" style="width:60px;flex:none;">
-          <button class="btn-sm" onclick="rebuildLEDGrid()">Update</button>
-        </div>
-        <div id="led-grid" class="led-grid"></div>
-        <input type="color" id="led-picker" style="display:none;">
-        <div class="separator"></div>
-        <div class="row">
-          <label>Manual</label>
-          <input type="number" id="led-manual-cc" value="37" min="0" max="127" style="width:60px;flex:none;">
-          <input type="color" id="led-manual-color" value="#00ff00">
-          <button class="btn-sm primary" onclick="sendManualLED()">Send</button>
-        </div>
-      </div>
-    </div>
-
+    <!-- SysEx -->
     <!-- Pages -->
-    <div id="tab-pages" class="tab-content">
-      <div class="panel-header">
-        <span>Pages</span>
-        <button class="btn-sm" onclick="addPage()">+ Add Page</button>
+    <div id="tab-pages" class="tab-body">
+      <div class="row">
+        <button class="primary btn-sm" onclick="saveCurrentPage()">Save Page</button>
+        <button class="btn-sm" onclick="addNewPage()">+ New</button>
+        <button class="btn-sm danger" onclick="deleteCurrentPage()">Delete</button>
       </div>
-      <div class="panel-body">
-        <div class="page-tabs" id="page-tabs"></div>
-        <div id="page-editor">
-          <div class="row">
-            <label>Name</label>
-            <input type="text" id="page-name" placeholder="Page name">
-          </div>
-          <div class="row">
-            <label>Screen L1</label>
-            <input type="text" id="page-screen-l1" placeholder="Line 1 text">
-          </div>
-          <div class="row">
-            <label>Screen L2</label>
-            <input type="text" id="page-screen-l2" placeholder="Line 2 text">
-          </div>
-          <div class="separator"></div>
-          <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Button Mappings</h4>
-          <div id="page-buttons"></div>
-          <div class="row">
-            <button class="btn-sm" onclick="addPageButton()">+ Add Button</button>
-          </div>
-          <div class="separator"></div>
-          <h4 style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Encoder Config</h4>
-          <div class="row">
-            <label>Row 1</label>
-            <select id="page-enc-row1" style="width:100px;flex:none;">
-              <option value="absolute">Absolute</option>
-              <option value="relative">Relative</option>
-            </select>
-          </div>
-          <div class="row">
-            <label>Row 2</label>
-            <select id="page-enc-row2" style="width:100px;flex:none;">
-              <option value="absolute">Absolute</option>
-              <option value="relative" selected>Relative</option>
-            </select>
-          </div>
-          <div class="row">
-            <label>Row 3</label>
-            <select id="page-enc-row3" style="width:100px;flex:none;">
-              <option value="absolute">Absolute</option>
-              <option value="relative" selected>Relative</option>
-            </select>
-          </div>
-          <div class="separator"></div>
-          <div class="row">
-            <button class="primary" onclick="applyPage()">Apply Page</button>
-            <button class="danger" onclick="deletePage()">Delete</button>
-          </div>
-        </div>
+      <div class="section-divider"></div>
+      <div id="page-list" style="margin-bottom:8px;"></div>
+      <div class="section-divider"></div>
+      <div class="row">
+        <label>Name</label>
+        <input type="text" id="page-name" placeholder="Page name" onchange="renameCurrentPage()">
       </div>
+      <div class="section-label">Encoder Modes</div>
+      <div class="row">
+        <label>Row 1</label>
+        <select id="page-enc-row1" style="width:90px;flex:none;" onchange="saveCurrentPage()">
+          <option value="absolute">Absolute</option>
+          <option value="relative">Relative</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Row 2</label>
+        <select id="page-enc-row2" style="width:90px;flex:none;" onchange="saveCurrentPage()">
+          <option value="absolute">Absolute</option>
+          <option value="relative" selected>Relative</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Row 3</label>
+        <select id="page-enc-row3" style="width:90px;flex:none;" onchange="saveCurrentPage()">
+          <option value="absolute">Absolute</option>
+          <option value="relative" selected>Relative</option>
+        </select>
+      </div>
+      <div class="section-divider"></div>
+      <div class="row">
+        <button class="primary" onclick="applyCurrentPage()">Apply to Hardware</button>
+      </div>
+      <div class="section-label" style="margin-top:8px;">Page Switching</div>
+      <div style="font-size:10px;color:var(--text-dim);">Use PG▲/PG▼ buttons on LCXL3 to cycle pages (bind via Learn All first)</div>
+    </div>
+
+    <div id="tab-sysex" class="tab-body">
+      <textarea id="sysex-input" placeholder="F0 00 20 29 02 15 ... F7" rows="2"></textarea>
+      <div class="row" style="margin-top:6px;">
+        <button class="primary btn-sm" onclick="sendRawSysEx()">Send</button>
+      </div>
+      <div class="section-label">Discovery</div>
+      <div class="preset-grid">
+        <button class="btn-sm" onclick="probeIdentity()" style="border-color:var(--yellow);color:var(--yellow);">Identity</button>
+        <button class="btn-sm" onclick="probeLEDs()" style="border-color:var(--pink);color:var(--pink);">LED SysEx</button>
+        <button class="btn-sm" onclick="probeScreen()" style="border-color:var(--accent2);color:var(--accent2);">Screen SysEx</button>
+        <button class="btn-sm" onclick="fullAssault()" style="border-color:var(--red);color:var(--red);font-weight:bold;">FULL ASSAULT</button>
+        <button class="btn-sm" onclick="probeLedChannel()" style="border-color:var(--green);color:var(--green);">LED Channel</button>
+        <button class="btn-sm" onclick="probeLedColors()" style="border-color:var(--pink);color:var(--pink);">LED Colors</button>
+        <button class="btn-sm" onclick="probeLedBatch()" style="border-color:var(--yellow);color:var(--yellow);">Next Batch</button>
+        <button class="btn-sm" onclick="probeEncoderLEDs()" style="border-color:var(--accent);color:var(--accent);">Enc LEDs</button>
+        <button class="btn-sm" onclick="probeScreenCC()" style="border-color:var(--accent2);color:var(--accent2);">Screen CC</button>
+        <button class="btn-sm" onclick="probeLedPorts()" style="border-color:var(--accent2);color:var(--accent2);">LED Ports</button>
+      </div>
+      <div class="section-label" style="margin-top:8px;">Presets</div>
+      <div class="preset-grid">
+        <button class="btn-sm" onclick="loadPreset('daw-on')">DAW ON</button>
+        <button class="btn-sm" onclick="loadPreset('daw-off')">DAW OFF</button>
+        <button class="btn-sm" onclick="loadPreset('rel1-on')">Rel R1</button>
+        <button class="btn-sm" onclick="loadPreset('rel2-on')">Rel R2</button>
+        <button class="btn-sm" onclick="loadPreset('rel3-on')">Rel R3</button>
+      </div>
+      <div class="section-label">SysEx Response Log</div>
+      <div id="sysex-log" class="hex-preview" style="max-height:200px;overflow-y:auto;">Waiting for SysEx responses...</div>
+    </div>
+
+    <!-- Screen -->
+    <div id="tab-screen" class="tab-body">
+      <div class="row">
+        <label>Target</label>
+        <input type="text" id="screen-target" value="0x35" style="width:50px;flex:none;">
+      </div>
+      <div class="row">
+        <label>Arrange</label>
+        <input type="number" id="screen-arrange" value="1" min="0" max="10" style="width:50px;flex:none;">
+      </div>
+      <div class="section-divider"></div>
+      <div class="row">
+        <label>Line 1</label>
+        <input type="text" id="screen-line1" placeholder="midiwave" maxlength="20">
+      </div>
+      <div class="row">
+        <label>Line 2</label>
+        <input type="text" id="screen-line2" placeholder="Ready" maxlength="20">
+      </div>
+      <div class="row">
+        <button class="primary" onclick="sendScreen()">Send to Screen</button>
+      </div>
+      <div class="hex-preview" id="screen-hex">--</div>
     </div>
   </div>
 </div>
 
+<div class="info-bar">
+  <span id="info-last-msg">Last: --</span>
+  <div class="spacer"></div>
+  <span id="info-learn-status"></span>
+</div>
+
 <script>
+// ─── Remote Console ───
+(function() {
+  const orig = {};
+  let queue = [];
+  let flushing = false;
+
+  function flush() {
+    if (flushing || queue.length === 0) return;
+    flushing = true;
+    const batch = queue.splice(0, queue.length);
+    fetch('/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch })
+    }).catch(err => {
+      orig.error('[midiwave] Remote log failed:', err.message);
+    }).finally(() => {
+      flushing = false;
+      if (queue.length > 0) setTimeout(flush, 50);
+    });
+  }
+
+  for (const level of ['log', 'warn', 'error', 'info']) {
+    orig[level] = console[level].bind(console);
+    console[level] = (...args) => {
+      orig[level](...args);
+      queue.push({ level, args: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)) });
+      if (!flushing) setTimeout(flush, 16);
+    };
+  }
+})();
+
 // ─── State ───
 let midiAccess = null;
 let activeInput = null;
 let activeOutput = null;
-let learnMode = false;
 let monitorFilter = 'all';
 let monitorEntries = [];
 const MAX_LOG = 500;
 
-// Pages
-let pages = [{
-  name: 'Default',
-  screenL1: 'MIDI Lab',
-  screenL2: 'Ready',
-  buttons: [],
-  encoders: { row1: 'absolute', row2: 'relative', row3: 'relative' },
-  leds: {}
-}];
-let currentPage = 0;
+// LCXL3 default CC mapping (DAW mode)
+const LCXL3 = {
+  encoders: {
+    row1: { ccs: [13,14,15,16,17,18,19,20], channel: 16 },
+    row2: { ccs: [21,22,23,24,25,26,27,28], channel: 16 },
+    row3: { ccs: [29,30,31,32,33,34,35,36], channel: 16 },
+  },
+  faders: { ccs: [5,6,7,8,9,10,11,12], channel: 16 },
+  buttons: {
+    row1: { ccs: [37,38,39,40,41,42,43,44], channel: 1 },
+    row2: { ccs: [45,46,47,48,49,50,51,52], channel: 1 },
+  },
+  transport: {
+    play: { cc: 116, channel: 1 },
+    rec: { cc: 118, channel: 1 },
+  }
+};
 
-// LED state
-let ledColors = {}; // cc -> {r,g,b}
-let activeLedCC = null;
+// Control state — tracks what's mapped, named, colored
+// key = "type:row:col" or "transport:role"
+let controlMap = {}; // key -> { cc, ch, name, color, lastValue }
+let selectedKey = null;
+let learnAllMode = false;
+let learnAllQueue = [];
+let learnAllIndex = 0;
+
+// ─── Build Controller UI ───
+function buildController() {
+  // Encoder rows
+  ['row1','row2','row3'].forEach((row, ri) => {
+    const container = document.getElementById(`enc-${row}`);
+    container.innerHTML = '';
+    for (let i = 0; i < 8; i++) {
+      const key = `enc:${ri}:${i}`;
+      const cc = LCXL3.encoders[row].ccs[i];
+      const el = document.createElement('div');
+      el.className = 'encoder';
+      el.dataset.key = key;
+      el.innerHTML = `<span>${cc}</span><span class="val"></span>`;
+      el.onclick = () => selectControl(key);
+      container.appendChild(el);
+      // Init controlMap
+      if (!controlMap[key]) controlMap[key] = { cc, ch: LCXL3.encoders[row].channel, name: '', color: null, lastValue: null };
+    }
+  });
+
+  // Faders
+  const faderContainer = document.getElementById('fader-row');
+  faderContainer.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const key = `fader:0:${i}`;
+    const cc = LCXL3.faders.ccs[i];
+    const col = document.createElement('div');
+    col.className = 'fader-col';
+    col.innerHTML = `
+      <div class="fader-track" data-key="${key}" onclick="selectControl('${key}')">
+        <div class="fader-fill" style="height:0%"></div>
+      </div>
+      <span class="fader-label">${cc}</span>
+    `;
+    faderContainer.appendChild(col);
+    if (!controlMap[key]) controlMap[key] = { cc, ch: LCXL3.faders.channel, name: '', color: null, lastValue: null };
+  }
+
+  // Button rows
+  ['row1','row2'].forEach((row, ri) => {
+    const container = document.getElementById(`btn-${row}`);
+    container.innerHTML = '';
+    for (let i = 0; i < 8; i++) {
+      const key = `btn:${ri}:${i}`;
+      const cc = LCXL3.buttons[row].ccs[i];
+      const el = document.createElement('div');
+      el.className = 'btn-pad';
+      el.dataset.key = key;
+      el.innerHTML = `<span>${cc}</span><span class="cc-tag"></span>`;
+      el.onclick = () => selectControl(key);
+      container.appendChild(el);
+      if (!controlMap[key]) controlMap[key] = { cc, ch: LCXL3.buttons[row].channel, name: '', color: null, lastValue: null };
+    }
+  });
+
+  // Transport
+  const transportContainer = document.getElementById('transport-row');
+  transportContainer.querySelectorAll('.transport-btn').forEach(el => {
+    const role = el.dataset.role;
+    const key = `transport:${role}`;
+    el.onclick = () => selectControl(key);
+    if (!controlMap[key]) {
+      const known = LCXL3.transport[role];
+      controlMap[key] = { cc: known ? known.cc : null, ch: known ? known.channel : null, name: role, color: null, lastValue: null };
+    }
+  });
+}
+
+// ─── Select Control ───
+function selectControl(key) {
+  document.querySelectorAll('.selected-control').forEach(el => el.classList.remove('selected-control'));
+  selectedKey = key;
+  const ctrl = controlMap[key];
+
+  // Highlight
+  const el = document.querySelector(`[data-key="${key}"]`) ||
+             document.querySelector(`.transport-btn[data-role="${key.split(':')[1]}"]`);
+  if (el) el.classList.add('selected-control');
+
+  // Update control panel
+  document.getElementById('control-panel').style.display = 'block';
+  document.getElementById('selected-info').textContent = `Selected: ${key}`;
+  document.getElementById('ctrl-name').value = ctrl.name || '';
+  document.getElementById('ctrl-cc').textContent = ctrl.cc != null ? ctrl.cc : '--';
+  document.getElementById('ctrl-ch').textContent = ctrl.ch != null ? ctrl.ch : '--';
+
+  // Switch to control tab
+  switchTab(document.querySelector('.tab:nth-child(2)'), 'tab-control');
+
+  console.log(`[midiwave] Selected: ${key} CC:${ctrl.cc} Ch:${ctrl.ch}`);
+}
+
+function updateSelectedName() {
+  if (!selectedKey) return;
+  controlMap[selectedKey].name = document.getElementById('ctrl-name').value;
+}
+
+// ─── LED Control (CC on ch1, value = color palette index) ───
+// Novation LCXL3 MK3 color palette (approximate CSS colors for display)
+const LED_PALETTE = [
+  // 0-3: off, greys, white
+  '#000000','#333333','#777777','#ffffff',
+  // 4-7: red (ll, l, m, d)
+  '#ffcccc','#ff6666','#ee0000','#880000',
+  // 8-11: orange (ll, l, m, d)
+  '#ffddaa','#ffaa44','#ee7700','#884400',
+  // 12-15: yellow (ll, l, m, d)
+  '#ffffaa','#ffff44','#dddd00','#888800',
+  // 16-19: yellow-green (ll, l, m, d)
+  '#ddffaa','#aaff44','#88dd00','#448800',
+  // 20-23: neon green (ll, l, m, d)
+  '#aaffaa','#44ff44','#00ee00','#008800',
+  // 24-27: teal (ll, l, m, d)
+  '#aaffdd','#44ffaa','#00dd88','#008855',
+  // 28-31: teal (same pattern)
+  '#aaffee','#44ffcc','#00ddaa','#008866',
+  // 32-35: more teal
+  '#aaffff','#44ffee','#00ddcc','#008888',
+  // 36-39: bluish teal
+  '#aaeeff','#44ddff','#00bbdd','#007788',
+  // 40-43: sky blue
+  '#aaddff','#44bbff','#0099ee','#006688',
+  // 44-47: rich blue
+  '#aaaaff','#4488ff','#0044ee','#002288',
+  // 48-51: purples
+  '#ccaaff','#9944ff','#6600ee','#440088',
+  // 52-55: pinks
+  '#ffaaee','#ff44cc','#dd00aa','#880066',
+  // 56-59: fuscia
+  '#ffaadd','#ff44aa','#ee0088','#880055',
+  // 60-63: red then yellows
+  '#ee0000','#ffff00','#dddd00','#aaaa00',
+  // 64-67: green to blue
+  '#00ee00','#00dddd','#0088ff','#0044dd',
+  // 68-71: teal, purple, pink, dark pink
+  '#00ddaa','#9944ff','#ff44aa','#aa0066',
+  // 72-75: red, pale yellow, yellow-green, yellow
+  '#ee0000','#ffffaa','#aaff44','#ffff00',
+  // 76-79: green, teal, sky, lazuli
+  '#00ee00','#00ddaa','#44bbff','#2244cc',
+  // 80-83: purple, fuscia, pink, dark orange
+  '#8800dd','#ee00aa','#ff66aa','#cc5500',
+  // 84-87: orange, pale yellow, yellow, frog green
+  '#ff8800','#ffffaa','#ffff00','#66dd00',
+  // 88-91: lime, ice, frozen, pale purple
+  '#aaff00','#ccffff','#aaeeff','#ccaaff',
+  // 92-95: dark pale purp, pink, fuscia, rich fuscia
+  '#886699','#ff66aa','#ee00aa','#cc0088',
+  // 96-99: orange, yellow, yellow-green, yellow
+  '#ff8800','#ffff00','#aaff00','#dddd00',
+  // 100-101: (continuing)
+  '#ffff00','#dddd00',
+  // 102-105: yellow, electric green, pale green, pale purp
+  '#ffff00','#00ff44','#aaffaa','#ccaaff',
+  // 106-109: muted purp, peach, red, pink
+  '#775599','#ffccaa','#ee0000','#ff66aa',
+  // 110-111: (continuing)
+  '#ff8888','#ffaaaa',
+  // 112-115: orange, light orange, pale yellow, yellow
+  '#ff8800','#ffaa44','#ffffaa','#ffff00',
+  // 116-119: deep purp, skin, ice, pale purp
+  '#440088','#ffccaa','#ccffff','#ccaaff',
+  // 120-123: pale purp, dim purp, grey, white
+  '#ddaaff','#664488','#555555','#dddddd',
+  // 124-127: red, dark red, green, dark green
+  '#ee0000','#880000','#00ee00','#008800',
+];
+
+function sendSelectedLED() {
+  if (!selectedKey) return;
+  const ctrl = controlMap[selectedKey];
+  if (ctrl.cc == null) return;
+  const val = parseInt(document.getElementById('ctrl-led-val').value);
+  document.getElementById('ctrl-led-display').textContent = val;
+  sendLED(ctrl.cc, val);
+  ctrl.ledVal = val;
+  updateControlVisual(selectedKey);
+}
+
+function clearSelectedLED() {
+  if (!selectedKey) return;
+  const ctrl = controlMap[selectedKey];
+  if (ctrl.cc == null) return;
+  sendLED(ctrl.cc, 0);
+  ctrl.ledVal = 0;
+  document.getElementById('ctrl-led-val').value = 0;
+  document.getElementById('ctrl-led-display').textContent = '0';
+  updateControlVisual(selectedKey);
+}
+
+function sendLED(cc, colorVal) {
+  // MK3: CC on channel 1, value = palette color index
+  send([0xB0, cc, colorVal & 0x7F]);
+}
+
+function buildPalette() {
+  const container = document.getElementById('led-palette');
+  container.innerHTML = '';
+  for (let i = 0; i < 128; i++) {
+    const swatch = document.createElement('div');
+    swatch.style.cssText = `background:${LED_PALETTE[i]};height:12px;cursor:pointer;border-radius:1px;`;
+    swatch.title = `${i}`;
+    swatch.onclick = () => {
+      document.getElementById('ctrl-led-val').value = i;
+      document.getElementById('ctrl-led-display').textContent = i;
+      sendSelectedLED();
+    };
+    container.appendChild(swatch);
+  }
+}
+
+// ─── Update Visuals ───
+function updateControlVisual(key) {
+  const ctrl = controlMap[key];
+  const el = document.querySelector(`[data-key="${key}"]`);
+  if (!el) return;
+
+  if (ctrl.ledVal != null && ctrl.ledVal > 0) {
+    const css = LED_PALETTE[ctrl.ledVal] || '#fff';
+    if (el.classList.contains('btn-pad')) {
+      el.style.background = css;
+    } else {
+      el.style.borderColor = css;
+    }
+  } else if (ctrl.ledVal === 0) {
+    if (el.classList.contains('btn-pad')) {
+      el.style.background = '#222';
+    } else {
+      el.style.borderColor = '';
+    }
+  }
+
+  if (ctrl.lastValue != null) {
+    if (el.classList.contains('fader-track') || el.closest('.fader-col')) {
+      const fill = el.querySelector('.fader-fill') || el.closest('.fader-col')?.querySelector('.fader-fill');
+      if (fill) fill.style.height = `${(ctrl.lastValue / 127) * 100}%`;
+    }
+    const valEl = el.querySelector('.val');
+    if (valEl) valEl.textContent = ctrl.lastValue;
+  }
+
+  if (ctrl.name) {
+    const label = el.querySelector('span:first-child');
+    if (label && !el.classList.contains('fader-track')) label.textContent = ctrl.name || ctrl.cc;
+  }
+}
+
+// ─── Learn All Mode ───
+function toggleLearnAll() {
+  learnAllMode = !learnAllMode;
+  document.getElementById('btn-learn-all').classList.toggle('active', learnAllMode);
+
+  if (learnAllMode) {
+    // Build queue: all controls in order
+    learnAllQueue = [];
+    ['enc:0','enc:1','enc:2'].forEach(prefix => {
+      for (let i = 0; i < 8; i++) learnAllQueue.push(`${prefix}:${i}`);
+    });
+    for (let i = 0; i < 8; i++) learnAllQueue.push(`fader:0:${i}`);
+    for (let i = 0; i < 8; i++) learnAllQueue.push(`btn:0:${i}`);
+    for (let i = 0; i < 8; i++) learnAllQueue.push(`btn:1:${i}`);
+    ['play','rec','shift','mode','page-up','page-dn','track-l','track-r'].forEach(r => learnAllQueue.push(`transport:${r}`));
+
+    learnAllIndex = 0;
+    highlightLearnTarget();
+    document.getElementById('info-learn-status').textContent = `LEARN: Touch ${learnAllQueue[0]} on controller`;
+    console.log('[midiwave] Learn All started — touch controls in order');
+  } else {
+    clearLearnHighlight();
+    document.getElementById('info-learn-status').textContent = '';
+    console.log('[midiwave] Learn All stopped');
+  }
+}
+
+function highlightLearnTarget() {
+  clearLearnHighlight();
+  if (learnAllIndex >= learnAllQueue.length) {
+    learnAllMode = false;
+    document.getElementById('btn-learn-all').classList.remove('active');
+    document.getElementById('info-learn-status').textContent = 'Learn complete!';
+    console.log('[midiwave] Learn All complete!');
+    return;
+  }
+  const key = learnAllQueue[learnAllIndex];
+  const el = document.querySelector(`[data-key="${key}"]`) ||
+             document.querySelector(`.transport-btn[data-role="${key.split(':')[1]}"]`);
+  if (el) el.classList.add('learn-active');
+  document.getElementById('info-learn-status').textContent = `LEARN: Touch ${key}`;
+}
+
+function clearLearnHighlight() {
+  document.querySelectorAll('.learn-active').forEach(el => el.classList.remove('learn-active'));
+}
 
 // ─── MIDI Access ───
 async function requestMIDI() {
   try {
+    console.log('[midiwave] Requesting MIDI access with sysex...');
     midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+    console.log('[midiwave] MIDI access granted. Inputs:', midiAccess.inputs.size, 'Outputs:', midiAccess.outputs.size);
     populateDevices();
-    midiAccess.onstatechange = populateDevices;
+    midiAccess.onstatechange = (e) => {
+      console.log('[midiwave] Device state change:', e.port.name, e.port.type, e.port.state);
+      populateDevices();
+    };
     document.getElementById('conn-status').textContent = 'MIDI Ready';
     document.getElementById('conn-status').className = 'status connected';
   } catch (e) {
+    console.error('[midiwave] MIDI access denied:', e);
     alert('MIDI access denied: ' + e.message);
   }
 }
@@ -568,22 +990,39 @@ async function requestMIDI() {
 function populateDevices() {
   const inSel = document.getElementById('midi-in');
   const outSel = document.getElementById('midi-out');
+  const prevIn = inSel.value;
+  const prevOut = outSel.value;
+
   inSel.innerHTML = '<option value="">-- select input --</option>';
   outSel.innerHTML = '<option value="">-- select output --</option>';
 
   for (const [id, port] of midiAccess.inputs) {
+    console.log('[midiwave]   IN:', port.name, '| id:', id);
     const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = port.name;
-    if (port.name.includes('MIDIIN2') && port.name.includes('Launch Control')) opt.selected = true;
+    opt.value = id; opt.textContent = port.name;
     inSel.appendChild(opt);
   }
   for (const [id, port] of midiAccess.outputs) {
+    console.log('[midiwave]  OUT:', port.name, '| id:', id);
     const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = port.name;
-    if (port.name.includes('MIDIOUT2') && port.name.includes('Launch Control')) opt.selected = true;
+    opt.value = id; opt.textContent = port.name;
     outSel.appendChild(opt);
+  }
+
+  // Restore or auto-select
+  if (prevIn && [...inSel.options].some(o => o.value === prevIn)) {
+    inSel.value = prevIn;
+  } else {
+    for (const o of inSel.options) {
+      if (o.textContent.includes('MIDIIN2') && o.textContent.includes('Launch Control')) { inSel.value = o.value; break; }
+    }
+  }
+  if (prevOut && [...outSel.options].some(o => o.value === prevOut)) {
+    outSel.value = prevOut;
+  } else {
+    for (const o of outSel.options) {
+      if (o.textContent.includes('MIDIOUT2') && o.textContent.includes('Launch Control')) { outSel.value = o.value; break; }
+    }
   }
 
   inSel.onchange = connectInput;
@@ -595,15 +1034,19 @@ function populateDevices() {
 function connectInput() {
   if (activeInput) activeInput.onmidimessage = null;
   const id = document.getElementById('midi-in').value;
-  if (!id || !midiAccess) return;
+  if (!id || !midiAccess) { activeInput = null; return; }
   activeInput = midiAccess.inputs.get(id);
-  if (activeInput) activeInput.onmidimessage = onMIDIMessage;
+  if (activeInput) {
+    activeInput.onmidimessage = onMIDIMessage;
+    console.log('[midiwave] Connected input:', activeInput.name);
+  }
 }
 
 function connectOutput() {
   const id = document.getElementById('midi-out').value;
-  if (!id || !midiAccess) return;
+  if (!id || !midiAccess) { activeOutput = null; return; }
   activeOutput = midiAccess.outputs.get(id);
+  if (activeOutput) console.log('[midiwave] Connected output:', activeOutput.name);
 }
 
 // ─── MIDI Message Handler ───
@@ -613,71 +1056,107 @@ function onMIDIMessage(e) {
   const ts = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0');
   const hex = Array.from(data).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
 
-  let type = 'other';
-  let ch = '--';
-  let d1 = '--';
-  let d2 = '--';
+  let type = 'other', ch = '--', d1 = '--', d2 = '--';
 
   if (data[0] >= 0xB0 && data[0] <= 0xBF) {
-    type = 'cc';
-    ch = (data[0] & 0x0F) + 1;
-    d1 = data[1];
-    d2 = data[2];
+    type = 'cc'; ch = (data[0] & 0x0F) + 1; d1 = data[1]; d2 = data[2];
   } else if (data[0] >= 0x90 && data[0] <= 0x9F) {
-    type = 'note';
-    ch = (data[0] & 0x0F) + 1;
-    d1 = data[1];
-    d2 = data[2];
+    type = 'note'; ch = (data[0] & 0x0F) + 1; d1 = data[1]; d2 = data[2];
   } else if (data[0] >= 0x80 && data[0] <= 0x8F) {
-    type = 'note';
-    ch = (data[0] & 0x0F) + 1;
-    d1 = data[1];
-    d2 = 0;
+    type = 'note'; ch = (data[0] & 0x0F) + 1; d1 = data[1]; d2 = 0;
   } else if (data[0] === 0xF0) {
     type = 'sysex';
+    // Log SysEx to response panel
+    const sysexLog = document.getElementById('sysex-log');
+    const txt = sysexLog.textContent === 'Waiting for SysEx responses...' ? '' : sysexLog.textContent;
+    sysexLog.textContent = txt + ts + '  ← ' + hex + '\n';
+    sysexLog.scrollTop = sysexLog.scrollHeight;
+    console.log(`[sysex-in] ${hex}`);
   }
 
+  // Log to server
+  console.log(`[midi] ${type.toUpperCase().padEnd(5)} ch${String(ch).padStart(2)} cc${String(d1).padStart(3)} val${String(d2).padStart(3)}  ${hex}`);
+
+  // Update info bar
+  document.getElementById('info-last-msg').textContent = `Last: ${type.toUpperCase()} ch${ch} cc${d1} val${d2}`;
+
+  // Monitor log
   const entry = { ts, type, ch, d1, d2, hex };
   monitorEntries.push(entry);
   if (monitorEntries.length > MAX_LOG) monitorEntries.shift();
-
-  if (learnMode && type === 'cc') {
-    document.getElementById('learn-result').textContent = `CC#${d1} Ch${ch} Val${d2}`;
-  }
-
   renderMonitor();
 
-  // Fire page callbacks
-  if (type === 'cc' && pages[currentPage]) {
-    handlePageCC(ch, d1, d2);
+  // Map incoming to visual controls
+  if (type === 'cc') {
+    mapIncomingCC(ch, d1, d2);
+  }
+
+  // Learn All mode
+  if (learnAllMode && type === 'cc' && d2 > 0) {
+    const key = learnAllQueue[learnAllIndex];
+    if (key) {
+      controlMap[key].cc = d1;
+      controlMap[key].ch = ch;
+      console.log(`[midiwave] Learned: ${key} → CC${d1} Ch${ch}`);
+      updateControlLabel(key);
+      learnAllIndex++;
+      highlightLearnTarget();
+    }
   }
 }
 
+function mapIncomingCC(ch, cc, val) {
+  // Page up/down on ch1
+  if (ch === 1 && val > 0) {
+    if (cc === 106) { switchPage(-1); return; }
+    if (cc === 107) { switchPage(1); return; }
+  }
+
+  // Find which control this CC belongs to and update it
+  for (const [key, ctrl] of Object.entries(controlMap)) {
+    if (ctrl.cc === cc && ctrl.ch === ch) {
+      ctrl.lastValue = val;
+      updateControlVisual(key);
+
+      // Flash the element
+      const el = document.querySelector(`[data-key="${key}"]`);
+      if (el) {
+        el.classList.add('active');
+        setTimeout(() => el.classList.remove('active'), 150);
+      }
+      break;
+    }
+  }
+}
+
+function updateControlLabel(key) {
+  const ctrl = controlMap[key];
+  const el = document.querySelector(`[data-key="${key}"]`);
+  if (!el) return;
+  const label = el.querySelector('span:first-child');
+  if (label) label.textContent = ctrl.cc;
+  el.classList.add('mapped');
+}
+
+// ─── Monitor ───
 function renderMonitor() {
   const log = document.getElementById('monitor-log');
-  const filtered = monitorFilter === 'all'
-    ? monitorEntries
-    : monitorEntries.filter(e => e.type === monitorFilter);
-
+  const filtered = monitorFilter === 'all' ? monitorEntries : monitorEntries.filter(e => e.type === monitorFilter);
   const last100 = filtered.slice(-100);
-  log.innerHTML = last100.map((e, i) => {
-    const isNew = i === last100.length - 1;
-    return `<div class="entry${isNew ? ' flash' : ''}">
+  log.innerHTML = last100.map((e, i) =>
+    `<div class="entry${i === last100.length - 1 ? ' flash' : ''}">
       <span>${e.ts}</span>
       <span class="type ${e.type}">${e.type.toUpperCase()}</span>
       <span>${e.ch}</span>
       <span>${e.d1}</span>
       <span>${e.d2}</span>
       <span style="color:var(--text-dim)">${e.hex}</span>
-    </div>`;
-  }).join('');
+    </div>`
+  ).join('');
   log.scrollTop = log.scrollHeight;
 }
 
-function clearMonitor() {
-  monitorEntries = [];
-  document.getElementById('monitor-log').innerHTML = '';
-}
+function clearMonitor() { monitorEntries = []; document.getElementById('monitor-log').innerHTML = ''; }
 
 function setFilter(btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -686,143 +1165,23 @@ function setFilter(btn) {
   renderMonitor();
 }
 
-function toggleLearn() {
-  learnMode = !learnMode;
-  document.getElementById('btn-learn').classList.toggle('active', learnMode);
-  document.getElementById('learn-display').style.display = learnMode ? 'block' : 'none';
-}
-
 // ─── Send Helpers ───
 function send(data) {
-  if (!activeOutput) { alert('No MIDI output selected'); return false; }
+  if (!activeOutput) { console.warn('[midiwave] SEND BLOCKED — no output'); return false; }
+  const hex = Array.from(data).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+  console.log('[midiwave] SEND →', hex);
   activeOutput.send(data);
   return true;
 }
 
 function sendDAWMode(on) {
+  console.log('[midiwave] DAW mode', on ? 'ON' : 'OFF');
   send([0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x02, on ? 0x7F : 0x00, 0xF7]);
 }
 
 function sendRelativeMode(row, on) {
   const ccMap = { 1: 0x45, 2: 0x48, 3: 0x49 };
   send([0xB6, ccMap[row], on ? 0x7F : 0x00]);
-}
-
-function runInitSequence() {
-  if (!activeOutput) { alert('No MIDI output selected'); return; }
-  // 1. DAW mode ON
-  sendDAWMode(true);
-  // 2. Relative encoders rows 2+3
-  setTimeout(() => {
-    sendRelativeMode(2, true);
-    sendRelativeMode(3, true);
-  }, 100);
-  // 3. Screen
-  setTimeout(() => {
-    document.getElementById('screen-line1').value = 'MIDI Lab';
-    document.getElementById('screen-line2').value = 'Ready';
-    sendScreen();
-  }, 200);
-}
-
-// ─── Screen ───
-function sendScreen() {
-  const target = parseInt(document.getElementById('screen-target').value);
-  const arrange = parseInt(document.getElementById('screen-arrange').value);
-  const line1 = document.getElementById('screen-line1').value;
-  const line2 = document.getElementById('screen-line2').value;
-
-  // Step 1: configure display
-  const configMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x04, target, arrange, 0xF7];
-  send(configMsg);
-
-  // Step 2: set text
-  const textMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x06, target, 0x00];
-  for (let i = 0; i < line1.length; i++) textMsg.push(line1.charCodeAt(i) & 0x7F);
-  textMsg.push(0x00, 0x01);
-  for (let i = 0; i < line2.length; i++) textMsg.push(line2.charCodeAt(i) & 0x7F);
-  textMsg.push(0xF7);
-
-  setTimeout(() => send(textMsg), 50);
-
-  // Hex preview
-  const hex1 = configMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-  const hex2 = textMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-  document.getElementById('screen-hex').textContent = hex1 + '\n' + hex2;
-}
-
-// ─── RGB LEDs ───
-function rebuildLEDGrid() {
-  const start = parseInt(document.getElementById('led-cc-start').value);
-  const end = parseInt(document.getElementById('led-cc-end').value);
-  const grid = document.getElementById('led-grid');
-  grid.innerHTML = '';
-  for (let cc = start; cc <= end; cc++) {
-    const btn = document.createElement('div');
-    btn.className = 'led-btn';
-    btn.dataset.cc = cc;
-    const color = ledColors[cc];
-    if (color) {
-      btn.style.background = `rgb(${Math.round(color.r/127*255)},${Math.round(color.g/127*255)},${Math.round(color.b/127*255)})`;
-    }
-    btn.innerHTML = `<span class="cc-label">${cc}</span>`;
-    btn.onclick = () => pickLEDColor(cc, btn);
-    grid.appendChild(btn);
-  }
-}
-
-function pickLEDColor(cc, btn) {
-  activeLedCC = cc;
-  const picker = document.getElementById('led-picker');
-  picker.click();
-  picker.onchange = () => {
-    const hex = picker.value;
-    const r = Math.round(parseInt(hex.slice(1, 3), 16) / 255 * 127);
-    const g = Math.round(parseInt(hex.slice(3, 5), 16) / 255 * 127);
-    const b = Math.round(parseInt(hex.slice(5, 7), 16) / 255 * 127);
-    sendLED(cc, r, g, b);
-    btn.style.background = hex;
-    ledColors[cc] = { r, g, b };
-  };
-}
-
-function sendLED(cc, r, g, b) {
-  send([0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x01, cc, r, g, b, 0xF7]);
-}
-
-function fillAllLEDs() {
-  const hex = document.getElementById('fill-color').value;
-  const r = Math.round(parseInt(hex.slice(1, 3), 16) / 255 * 127);
-  const g = Math.round(parseInt(hex.slice(3, 5), 16) / 255 * 127);
-  const b = Math.round(parseInt(hex.slice(5, 7), 16) / 255 * 127);
-  const start = parseInt(document.getElementById('led-cc-start').value);
-  const end = parseInt(document.getElementById('led-cc-end').value);
-  for (let cc = start; cc <= end; cc++) {
-    sendLED(cc, r, g, b);
-    ledColors[cc] = { r, g, b };
-  }
-  rebuildLEDGrid();
-}
-
-function clearAllLEDs() {
-  const start = parseInt(document.getElementById('led-cc-start').value);
-  const end = parseInt(document.getElementById('led-cc-end').value);
-  for (let cc = start; cc <= end; cc++) {
-    sendLED(cc, 0, 0, 0);
-    delete ledColors[cc];
-  }
-  rebuildLEDGrid();
-}
-
-function sendManualLED() {
-  const cc = parseInt(document.getElementById('led-manual-cc').value);
-  const hex = document.getElementById('led-manual-color').value;
-  const r = Math.round(parseInt(hex.slice(1, 3), 16) / 255 * 127);
-  const g = Math.round(parseInt(hex.slice(3, 5), 16) / 255 * 127);
-  const b = Math.round(parseInt(hex.slice(5, 7), 16) / 255 * 127);
-  sendLED(cc, r, g, b);
-  ledColors[cc] = { r, g, b };
-  rebuildLEDGrid();
 }
 
 // ─── CC Sender ───
@@ -840,6 +1199,29 @@ function sendCC() {
   send([0xB0 | (ch & 0x0F), cc & 0x7F, val & 0x7F]);
 }
 
+// ─── Screen ───
+function sendScreen() {
+  const target = parseInt(document.getElementById('screen-target').value);
+  const arrange = parseInt(document.getElementById('screen-arrange').value);
+  const line1 = document.getElementById('screen-line1').value;
+  const line2 = document.getElementById('screen-line2').value;
+
+  const configMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x04, target, arrange, 0xF7];
+  send(configMsg);
+
+  const textMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x06, target, 0x00];
+  for (let i = 0; i < line1.length; i++) textMsg.push(line1.charCodeAt(i) & 0x7F);
+  textMsg.push(0x00, 0x01);
+  for (let i = 0; i < line2.length; i++) textMsg.push(line2.charCodeAt(i) & 0x7F);
+  textMsg.push(0xF7);
+
+  setTimeout(() => send(textMsg), 50);
+
+  const hex1 = configMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+  const hex2 = textMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+  document.getElementById('screen-hex').textContent = hex1 + '\n' + hex2;
+}
+
 // ─── SysEx Workbench ───
 function sendRawSysEx() {
   const input = document.getElementById('sysex-input').value.trim();
@@ -853,119 +1235,731 @@ function sendRawSysEx() {
 const presets = {
   'daw-on': 'F0 00 20 29 02 15 02 7F F7',
   'daw-off': 'F0 00 20 29 02 15 02 00 F7',
+  'rel1-on': 'B6 45 7F',
   'rel2-on': 'B6 48 7F',
-  'rel2-off': 'B6 48 00',
   'rel3-on': 'B6 49 7F',
-  'rel3-off': 'B6 49 00',
 };
 
-function loadPreset(key) {
-  document.getElementById('sysex-input').value = presets[key];
+function loadPreset(key) { document.getElementById('sysex-input').value = presets[key]; }
+
+// ─── Discovery Probes ───
+function probeIdentity() {
+  // Universal MIDI Identity Request — every MIDI device should respond
+  console.log('[midiwave] PROBE: Identity Request (F0 7E 7F 06 01 F7)');
+  send(new Uint8Array([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]));
+}
+
+function probeLEDs() {
+  // Identity says family 0x48. Try 0x48 as device ID, plus various command formats.
+  const btn_cc = 41;
+  console.log('[midiwave] PROBE LED: Using device ID 0x48 (from identity). CC', btn_cc, '— watch ALL buttons!');
+
+  const H = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x48]; // MK3 header
+  const H_OLD = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15]; // old header
+
+  const probes = [
+    // MK3 header (0x48) with various command bytes
+    { label: '48h cmd=01 RGB', data: [...H, 0x01, btn_cc, 0x7F, 0x00, 0x00, 0xF7] },
+    { label: '48h cmd=03 RGB', data: [...H, 0x03, btn_cc, 0x7F, 0x00, 0x00, 0xF7] },
+    { label: '48h cmd=0B RGB', data: [...H, 0x0B, btn_cc, 0x7F, 0x00, 0x00, 0xF7] },
+    // Launchpad Pro MK3 style: cmd=03, lighting_type, index, r, g, b
+    { label: '48h 03 01 cc R G B (LP style)', data: [...H, 0x03, 0x01, btn_cc, 0x7F, 0x00, 0x00, 0xF7] },
+    { label: '48h 03 03 cc R G B', data: [...H, 0x03, 0x03, btn_cc, 0x7F, 0x00, 0x00, 0xF7] },
+    // Maybe LED index is 0-based position not CC number
+    { label: '48h cmd=01 idx=4 RGB', data: [...H, 0x01, 0x04, 0x7F, 0x00, 0x00, 0xF7] },
+    { label: '48h cmd=03 01 idx=4 RGB', data: [...H, 0x03, 0x01, 0x04, 0x7F, 0x00, 0x00, 0xF7] },
+    // Old header just in case (already failed but confirming)
+    { label: '15h cmd=01 RGB (old)', data: [...H_OLD, 0x01, btn_cc, 0x7F, 0x00, 0x00, 0xF7] },
+    // Non-SysEx approaches
+    { label: 'NoteOn ch1 vel=60 (color idx)', data: [0x90, btn_cc, 60] },
+    { label: 'NoteOn ch7', data: [0x96, btn_cc, 60] },
+    { label: 'NoteOn ch8', data: [0x97, btn_cc, 60] },
+    { label: 'CC ch8 val=60', data: [0xB7, btn_cc, 60] },
+  ];
+
+  let delay = 0;
+  for (const p of probes) {
+    setTimeout(() => {
+      console.log(`[midiwave] PROBE LED: ${p.label} → ${p.data.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join(' ')}`);
+      send(new Uint8Array(p.data));
+    }, delay);
+    delay += 800;
+  }
+  console.log(`[midiwave] LED probes: ${probes.length} attempts, 800ms apart`);
+}
+
+function probeScreen() {
+  console.log('[midiwave] PROBE SCREEN: Using device ID 0x48 (from identity)');
+
+  const H48 = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x48];
+  const H15 = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15];
+  // "HI" = 0x48 0x49, "OK" = 0x4F 0x4B
+  const TEXT = [0x48, 0x49]; // "HI"
+  const TEXT2 = [0x4F, 0x4B]; // "OK"
+
+  const probes = [
+    // MK3 header (0x48), same command structure as old
+    { label: 'Scr 48h config+text tgt=35', data: [
+      [...H48, 0x04, 0x35, 0x01, 0xF7],
+      [...H48, 0x06, 0x35, 0x00, ...TEXT, 0x00, 0x01, ...TEXT2, 0xF7]
+    ]},
+    // MK3 header, target=00
+    { label: 'Scr 48h tgt=00', data: [
+      [...H48, 0x04, 0x00, 0x01, 0xF7],
+      [...H48, 0x06, 0x00, 0x00, ...TEXT, 0x00, 0x01, ...TEXT2, 0xF7]
+    ]},
+    // MK3 header, text only (no config step)
+    { label: 'Scr 48h text only tgt=35', data: [
+      [...H48, 0x06, 0x35, 0x00, ...TEXT, 0x00, 0x01, ...TEXT2, 0xF7]
+    ]},
+    { label: 'Scr 48h text only tgt=00', data: [
+      [...H48, 0x06, 0x00, 0x00, ...TEXT, 0x00, 0x01, ...TEXT2, 0xF7]
+    ]},
+    // Old header with 0x15 (already failed, but included for completeness)
+    { label: 'Scr 15h config+text (old)', data: [
+      [...H15, 0x04, 0x35, 0x01, 0xF7],
+      [...H15, 0x06, 0x35, 0x00, ...TEXT, 0x00, 0x01, ...TEXT2, 0xF7]
+    ]},
+    // Maybe MK3 uses a totally different command byte for screen
+    { label: 'Scr 48h cmd=08 text', data: [
+      [...H48, 0x08, 0x35, 0x00, ...TEXT, 0x00, 0x01, ...TEXT2, 0xF7]
+    ]},
+    { label: 'Scr 48h cmd=0A text', data: [
+      [...H48, 0x0A, 0x35, 0x00, ...TEXT, 0x00, 0x01, ...TEXT2, 0xF7]
+    ]},
+  ];
+
+  let delay = 0;
+  for (const p of probes) {
+    for (const msg of p.data) {
+      setTimeout(() => {
+        console.log(`[midiwave] PROBE SCREEN: ${p.label} → ${msg.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join(' ')}`);
+        send(new Uint8Array(msg));
+      }, delay);
+      delay += 400;
+    }
+    delay += 1200;
+  }
+  console.log(`[midiwave] Screen probes queued — watch OLED for "HI"/"OK"`);
+}
+
+function fullAssault() {
+  if (!midiAccess) { alert('No MIDI access'); return; }
+
+  // Collect ALL output ports — not just LCXL3
+  const ports = [];
+  for (const [id, port] of midiAccess.outputs) {
+    ports.push({ id, port, name: port.name });
+  }
+  console.log(`[midiwave] === FULL ASSAULT === ${ports.length} output ports`);
+  ports.forEach(p => console.log(`[midiwave]   PORT: ${p.name} (${p.id})`));
+
+  const btn_cc = 41;
+  // Every possible Novation device ID we can think of
+  const devIds = [0x15, 0x48, 0x14, 0x16, 0x47, 0x49, 0x00, 0x01, 0x7F];
+  // Every possible command byte for LED
+  const ledCmds = [0x01, 0x03, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F];
+  // Screen commands
+  const screenCmds = [0x04, 0x05, 0x06, 0x07, 0x08, 0x0A];
+  // Targets
+  const targets = [0x35, 0x00, 0x01, 0x7F];
+
+  let delay = 0;
+  let probeCount = 0;
+
+  // ══════ PHASE 1: SysEx LED on ALL ports x ALL device IDs x ALL commands ══════
+  for (const p of ports) {
+    for (const devId of devIds) {
+      for (const cmd of ledCmds) {
+        setTimeout(() => {
+          const msg = [0xF0, 0x00, 0x20, 0x29, 0x02, devId, cmd, btn_cc, 0x7F, 0x00, 0x00, 0xF7];
+          const hex = msg.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+          console.log(`[assault] LED port=${p.name} dev=${devId.toString(16)} cmd=${cmd.toString(16)}: ${hex}`);
+          p.port.send(new Uint8Array(msg));
+        }, delay);
+        delay += 80;
+        probeCount++;
+      }
+      // Also try Launchpad-style: cmd, lighting_type, index, r, g, b
+      for (const lt of [0x00, 0x01, 0x02, 0x03]) {
+        setTimeout(() => {
+          const msg = [0xF0, 0x00, 0x20, 0x29, 0x02, devId, 0x03, lt, btn_cc, 0x7F, 0x00, 0x00, 0xF7];
+          const hex = msg.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+          console.log(`[assault] LED-LP port=${p.name} dev=${devId.toString(16)} lt=${lt}: ${hex}`);
+          p.port.send(new Uint8Array(msg));
+        }, delay);
+        delay += 80;
+        probeCount++;
+      }
+    }
+    delay += 200;
+  }
+
+  // ══════ PHASE 2: CC-based LED on ALL ports x ALL 16 channels ══════
+  delay += 500;
+  for (const p of ports) {
+    for (let ch = 0; ch < 16; ch++) {
+      setTimeout(() => {
+        console.log(`[assault] CC LED port=${p.name} ch${ch+1} cc=${btn_cc} val=127`);
+        p.port.send([0xB0 | ch, btn_cc, 127]);
+      }, delay);
+      delay += 60;
+      probeCount++;
+    }
+    delay += 200;
+  }
+
+  // ══════ PHASE 3: NoteOn LED on ALL ports x ALL 16 channels ══════
+  delay += 500;
+  for (const p of ports) {
+    for (let ch = 0; ch < 16; ch++) {
+      setTimeout(() => {
+        console.log(`[assault] NoteOn LED port=${p.name} ch${ch+1} note=${btn_cc} vel=60`);
+        p.port.send([0x90 | ch, btn_cc, 60]);
+      }, delay);
+      delay += 60;
+      probeCount++;
+    }
+    delay += 200;
+  }
+
+  // ══════ PHASE 4: Screen on ALL ports x ALL device IDs x ALL targets ══════
+  delay += 500;
+  for (const p of ports) {
+    for (const devId of devIds) {
+      for (const tgt of targets) {
+        for (const cmd of screenCmds) {
+          setTimeout(() => {
+            const msg = [0xF0, 0x00, 0x20, 0x29, 0x02, devId, cmd, tgt, 0x00, 0x48, 0x49, 0x00, 0x01, 0x4F, 0x4B, 0xF7];
+            const hex = msg.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+            console.log(`[assault] SCREEN port=${p.name} dev=${devId.toString(16)} cmd=${cmd.toString(16)} tgt=${tgt.toString(16)}: ${hex}`);
+            p.port.send(new Uint8Array(msg));
+          }, delay);
+          delay += 80;
+          probeCount++;
+        }
+      }
+    }
+    delay += 200;
+  }
+
+  // ══════ PHASE 5: Also listen on ALL input ports ══════
+  for (const [id, port] of midiAccess.inputs) {
+    if (port.onmidimessage) continue; // already listening
+    port.onmidimessage = (e) => {
+      const hex = Array.from(e.data).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      console.log(`[assault-in] ${port.name}: ${hex}`);
+    };
+    console.log(`[assault] Listening on input: ${port.name}`);
+  }
+
+  const totalTime = Math.round(delay / 1000);
+  console.log(`[midiwave] FULL ASSAULT: ${probeCount} probes across ${ports.length} ports. ~${totalTime}s total. WATCH EVERYTHING.`);
+  document.getElementById('info-learn-status').textContent = `ASSAULT: ${probeCount} probes, ~${totalTime}s — watch for ANY reaction`;
+}
+
+// ─── LED Port Isolation ───
+function probeLedPorts() {
+  if (!midiAccess) return;
+  // Use a DIFFERENT button per port so we can see which port works
+  // All on ch1 (since the echo came back on ch1)
+  const ports = [];
+  for (const [id, port] of midiAccess.outputs) {
+    if (port.name.includes('LCXL3') || port.name.includes('Launch Control')) {
+      ports.push({ id, port, name: port.name });
+    }
+  }
+
+  // Clear all buttons first on all ports
+  for (const p of ports) {
+    for (let cc = 37; cc <= 52; cc++) {
+      p.port.send([0xB0, cc, 0]); // ch1
+    }
+  }
+
+  console.log(`[midiwave] PORT ISOLATION: ${ports.length} ports, 1 button each, ch1`);
+
+  let delay = 1000;
+  ports.forEach((p, i) => {
+    const cc = 37 + i; // different button per port
+    setTimeout(() => {
+      console.log(`[midiwave] PORT TEST: ${p.name} → CC ${cc} ch1 val=127 (button ${i+1})`);
+      p.port.send([0xB0, cc, 127]);
+    }, delay);
+    delay += 2500; // 2.5s between each so you can see
+  });
+
+  // Also try SysEx LED on each port with old header (since waveloop uses it successfully)
+  delay += 1000;
+  ports.forEach((p, i) => {
+    const cc = 45 + i; // use bottom row buttons
+    setTimeout(() => {
+      const msg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x01, cc, 0x7F, 0x00, 0x00, 0xF7];
+      console.log(`[midiwave] PORT SYSEX TEST: ${p.name} → SysEx LED cc=${cc} RED`);
+      p.port.send(new Uint8Array(msg));
+    }, delay);
+    delay += 2500;
+  });
+
+  // And SysEx screen on each port
+  delay += 1000;
+  ports.forEach((p, i) => {
+    setTimeout(() => {
+      console.log(`[midiwave] PORT SCREEN TEST: ${p.name} → Screen "P${i+1}"`);
+      const cfg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x04, 0x35, 0x01, 0xF7];
+      const txt = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x06, 0x35, 0x00,
+        0x50, 0x4F, 0x52, 0x54, // "PORT"
+        0x00, 0x01,
+        0x30 + i + 1, // port number as ASCII
+        0xF7];
+      p.port.send(new Uint8Array(cfg));
+      setTimeout(() => p.port.send(new Uint8Array(txt)), 100);
+    }, delay);
+    delay += 3000;
+  });
+
+  console.log(`[midiwave] Port isolation: ~${Math.round(delay/1000)}s. Watch buttons 1-${ports.length} light up one at a time, then SysEx LED on bottom row, then screen`);
+}
+
+// ─── LED Channel Probe ───
+function probeLedChannel() {
+  if (!midiAccess) return;
+  // Use 8 different buttons (CC 37-44), one per channel on MIDIOUT2
+  // Each button gets a different channel so we can see which channel controls LEDs
+  const port = midiAccess.outputs.get(document.getElementById('midi-out').value);
+  if (!port) { alert('Select output port first'); return; }
+
+  console.log('[midiwave] LED CHANNEL PROBE: Sending CC 37-44 on ch1-8, one button per channel');
+  console.log('[midiwave] Watch which buttons light up — that tells us the channel');
+
+  // First clear all
+  for (let ch = 0; ch < 16; ch++) {
+    for (let cc = 37; cc <= 44; cc++) {
+      port.send([0xB0 | ch, cc, 0]);
+    }
+  }
+
+  // Send one button per channel, 1 second apart
+  const pairs = [
+    { cc: 37, ch: 0, label: 'btn1 ch1' },
+    { cc: 38, ch: 1, label: 'btn2 ch2' },
+    { cc: 39, ch: 2, label: 'btn3 ch3' },
+    { cc: 40, ch: 3, label: 'btn4 ch4' },
+    { cc: 41, ch: 4, label: 'btn5 ch5' },
+    { cc: 42, ch: 5, label: 'btn6 ch6' },
+    { cc: 43, ch: 6, label: 'btn7 ch7' },
+    { cc: 44, ch: 7, label: 'btn8 ch8' },
+  ];
+
+  let delay = 500;
+  for (const p of pairs) {
+    setTimeout(() => {
+      console.log(`[midiwave] LED CH: ${p.label} → CC ${p.cc} ch${p.ch+1} val=127`);
+      port.send([0xB0 | p.ch, p.cc, 127]);
+    }, delay);
+    delay += 1500;
+  }
+
+  // Then try ch9-16 on buttons 37-44
+  setTimeout(() => {
+    console.log('[midiwave] Now trying ch9-16...');
+    for (let ch = 0; ch < 8; ch++) {
+      port.send([0xB0 | ch, 37 + ch, 0]); // clear previous
+    }
+  }, delay);
+  delay += 500;
+
+  const pairs2 = [
+    { cc: 37, ch: 8, label: 'btn1 ch9' },
+    { cc: 38, ch: 9, label: 'btn2 ch10' },
+    { cc: 39, ch: 10, label: 'btn3 ch11' },
+    { cc: 40, ch: 11, label: 'btn4 ch12' },
+    { cc: 41, ch: 12, label: 'btn5 ch13' },
+    { cc: 42, ch: 13, label: 'btn6 ch14' },
+    { cc: 43, ch: 14, label: 'btn7 ch15' },
+    { cc: 44, ch: 15, label: 'btn8 ch16' },
+  ];
+
+  for (const p of pairs2) {
+    setTimeout(() => {
+      console.log(`[midiwave] LED CH: ${p.label} → CC ${p.cc} ch${p.ch+1} val=127`);
+      port.send([0xB0 | p.ch, p.cc, 127]);
+    }, delay);
+    delay += 1500;
+  }
+
+  console.log(`[midiwave] Channel probe: ~${Math.round(delay/1000)}s. Tell me which buttons lit up!`);
+}
+
+function probeLedColors() {
+  if (!midiAccess) return;
+  const port = midiAccess.outputs.get(document.getElementById('midi-out').value);
+  if (!port) { alert('Select output port first'); return; }
+
+  // Ch1 confirmed for LED color. Sweep all 128 values across 16 buttons in batches.
+  // 8 batches of 16 values each to cover 0-127
+  console.log('[midiwave] COLOR PALETTE: ch1, buttons 37-52, sweeping 0-127');
+
+  let delay = 0;
+  for (let batch = 0; batch < 8; batch++) {
+    setTimeout(() => {
+      const startVal = batch * 16;
+      console.log(`[midiwave] COLORS batch ${batch+1}/8: values ${startVal}-${startVal+15}`);
+      for (let i = 0; i < 16; i++) {
+        const val = startVal + i;
+        port.send([0xB0, 37 + i, val]); // ch1
+        console.log(`[midiwave]   btn${i+1} (cc${37+i}) = val ${val}`);
+      }
+    }, delay);
+    delay += 4000; // 4s per batch to observe colors
+  }
+
+  // Clear at end
+  setTimeout(() => {
+    for (let i = 0; i < 16; i++) port.send([0xB0, 37 + i, 0]);
+    console.log('[midiwave] Colors cleared');
+  }, delay);
+
+  console.log(`[midiwave] Color sweep: 8 batches, ~${Math.round(delay/1000)}s total. Describe what you see!`);
+}
+
+// Single batch mode — cycle through with a button
+let colorBatch = 0;
+function probeLedBatch() {
+  const port = midiAccess?.outputs.get(document.getElementById('midi-out').value);
+  if (!port) return;
+  const start = colorBatch * 16;
+  if (start >= 128) { colorBatch = 0; return probeLedBatch(); }
+  console.log(`[midiwave] BATCH ${colorBatch}: values ${start}-${start+15} on buttons 37-52`);
+  for (let i = 0; i < 16; i++) {
+    port.send([0xB0, 37 + i, start + i]);
+  }
+  document.getElementById('info-learn-status').textContent = `Palette batch ${colorBatch}/7: values ${start}-${start+15}. Click again for next.`;
+  colorBatch++;
+}
+
+function probeEncoderLEDs() {
+  const port = midiAccess?.outputs.get(document.getElementById('midi-out').value);
+  if (!port) return;
+
+  // Try setting encoder LEDs — same CC approach as buttons but with encoder CC numbers
+  // Row 1: 13-20, Row 2: 29-36, Row 3: 49-56 (or maybe 45-52?)
+  // Try ch1 (works for buttons), also ch7 and ch8
+  const rows = [
+    { label: 'Enc Row 1', ccs: [13,14,15,16,17,18,19,20] },
+    { label: 'Enc Row 2', ccs: [29,30,31,32,33,34,35,36] },
+    { label: 'Enc Row 3', ccs: [49,50,51,52,53,54,55,56] },
+    { label: 'Enc Row 3 alt', ccs: [45,46,47,48,49,50,51,52] },
+  ];
+  const channels = [0, 6, 7, 14, 15]; // ch1, ch7, ch8, ch15, ch16
+  const color = 5; // mid-red from palette
+
+  let delay = 0;
+  for (const ch of channels) {
+    for (const row of rows) {
+      setTimeout(() => {
+        console.log(`[midiwave] ENC LED: ${row.label} ch${ch+1} val=${color} → CCs ${row.ccs.join(',')}`);
+        for (const cc of row.ccs) {
+          port.send([0xB0 | ch, cc, color]);
+        }
+      }, delay);
+      delay += 2000;
+
+      // Clear
+      setTimeout(() => {
+        for (const cc of row.ccs) port.send([0xB0 | ch, cc, 0]);
+      }, delay);
+      delay += 500;
+    }
+  }
+
+  // Also try NoteOn for encoder positions
+  setTimeout(() => {
+    console.log('[midiwave] ENC LED: Trying NoteOn ch1 for encoder CCs');
+    for (const row of rows) {
+      for (const cc of row.ccs) {
+        port.send([0x90, cc, 60]);
+      }
+    }
+  }, delay);
+  delay += 2000;
+  setTimeout(() => {
+    for (const row of rows) {
+      for (const cc of row.ccs) port.send([0x80, cc, 0]);
+    }
+  }, delay);
+
+  console.log(`[midiwave] Encoder LED probe: ~${Math.round(delay/1000)}s. Watch encoder rings for any color!`);
+  document.getElementById('info-learn-status').textContent = `Probing encoder LEDs — watch rings for color changes`;
+}
+
+// ─── Sparkle Mode ───
+let sparkleTimer = null;
+function sparkle() {
+  const port = midiAccess?.outputs.get(document.getElementById('midi-out').value);
+  if (!port) return;
+
+  // All controllable CCs: encoders + buttons
+  const allCCs = [
+    13,14,15,16,17,18,19,20, // enc row 1
+    21,22,23,24,25,26,27,28, // enc row 2
+    29,30,31,32,33,34,35,36, // enc row 3
+    37,38,39,40,41,42,43,44, // btn row 1
+    45,46,47,48,49,50,51,52, // btn row 2
+  ];
+
+  if (sparkleTimer) { clearInterval(sparkleTimer); sparkleTimer = null; }
+
+  const startTime = Date.now();
+  const duration = 10000;
+  let frame = 0;
+
+  console.log('[midiwave] SPARKLE MODE — 10 seconds of magic');
+  document.getElementById('info-learn-status').textContent = 'SPARKLE MODE';
+
+  sparkleTimer = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    if (elapsed > duration) {
+      clearInterval(sparkleTimer);
+      sparkleTimer = null;
+      // Clear all
+      for (const cc of allCCs) port.send([0xB0, cc, 0]);
+      document.getElementById('info-learn-status').textContent = '';
+      console.log('[midiwave] Sparkle done');
+      return;
+    }
+
+    const phase = elapsed / duration; // 0-1
+    const mode = Math.floor(phase * 5); // 5 different effects
+
+    switch (mode) {
+      case 0: // Rainbow chase
+        for (let i = 0; i < allCCs.length; i++) {
+          const color = (frame * 3 + i * 4) % 128;
+          port.send([0xB0, allCCs[i], color]);
+        }
+        break;
+
+      case 1: // Random sparkle
+        for (const cc of allCCs) {
+          if (Math.random() > 0.6) {
+            port.send([0xB0, cc, Math.floor(Math.random() * 127) + 1]);
+          } else {
+            port.send([0xB0, cc, 0]);
+          }
+        }
+        break;
+
+      case 2: // Wave pulse — row by row
+        {
+          const rows = [
+            [13,14,15,16,17,18,19,20],
+            [21,22,23,24,25,26,27,28],
+            [29,30,31,32,33,34,35,36],
+            [37,38,39,40,41,42,43,44],
+            [45,46,47,48,49,50,51,52],
+          ];
+          const activeRow = frame % rows.length;
+          const colors = [5, 21, 41, 64, 88]; // red, green, blue, purple, lime
+          for (let r = 0; r < rows.length; r++) {
+            const val = r === activeRow ? colors[r] : 0;
+            for (const cc of rows[r]) port.send([0xB0, cc, val]);
+          }
+        }
+        break;
+
+      case 3: // Column sweep
+        {
+          const col = frame % 8;
+          for (let i = 0; i < allCCs.length; i++) {
+            const myCol = i % 8;
+            const dist = Math.abs(myCol - col);
+            const color = dist === 0 ? 3 : dist === 1 ? 48 : dist === 2 ? 64 : 0;
+            port.send([0xB0, allCCs[i], color]);
+          }
+        }
+        break;
+
+      case 4: // Grand finale — all flash random
+        for (const cc of allCCs) {
+          const color = Math.floor(Math.random() * 127) + 1;
+          port.send([0xB0, cc, color]);
+        }
+        break;
+    }
+
+    frame++;
+  }, 80); // ~12fps
+}
+
+function probeScreenCC() {
+  if (!midiAccess) return;
+  const port = midiAccess.outputs.get(document.getElementById('midi-out').value);
+  if (!port) { alert('Select output port first'); return; }
+
+  // Ch16 CC affected the screen! Let's explore.
+  // Try different CC numbers on ch16 with different values
+  console.log('[midiwave] SCREEN CC PROBE: ch16, trying CCs 0-127 with val=65 (ASCII "A")');
+
+  let delay = 0;
+  // Send CC 0-127 on ch16, each with value 65 ('A')
+  for (let cc = 0; cc < 128; cc++) {
+    setTimeout(() => {
+      console.log(`[midiwave] SCREEN CC: ch16 cc=${cc} val=65`);
+      port.send([0xBF, cc, 65]); // 0xBF = CC ch16
+    }, delay);
+    delay += 150;
+  }
+
+  console.log(`[midiwave] Screen CC probe: ~${Math.round(delay/1000)}s. Watch OLED for any changes!`);
 }
 
 // ─── Pages ───
-function renderPageTabs() {
-  const tabs = document.getElementById('page-tabs');
-  tabs.innerHTML = pages.map((p, i) =>
-    `<div class="page-tab${i === currentPage ? ' active' : ''}" onclick="selectPage(${i})">${p.name}</div>`
-  ).join('');
-  loadPageEditor();
-}
+let pages = [{
+  name: 'Default',
+  leds: {}, // key -> ledVal
+  names: {}, // key -> name
+  encoders: { row1: 'absolute', row2: 'relative', row3: 'relative' }
+}];
+let currentPageIndex = 0;
 
-function selectPage(i) {
-  saveCurrentPage();
-  currentPage = i;
-  renderPageTabs();
-}
-
-function addPage() {
-  saveCurrentPage();
-  pages.push({
-    name: 'Page ' + (pages.length + 1),
-    screenL1: '',
-    screenL2: '',
-    buttons: [],
-    encoders: { row1: 'absolute', row2: 'relative', row3: 'relative' },
-    leds: {}
-  });
-  currentPage = pages.length - 1;
-  renderPageTabs();
-}
-
-function deletePage() {
-  if (pages.length <= 1) return;
-  pages.splice(currentPage, 1);
-  currentPage = Math.min(currentPage, pages.length - 1);
-  renderPageTabs();
-}
-
-function loadPageEditor() {
-  const p = pages[currentPage];
-  if (!p) return;
-  document.getElementById('page-name').value = p.name;
-  document.getElementById('page-screen-l1').value = p.screenL1;
-  document.getElementById('page-screen-l2').value = p.screenL2;
-  document.getElementById('page-enc-row1').value = p.encoders.row1;
-  document.getElementById('page-enc-row2').value = p.encoders.row2;
-  document.getElementById('page-enc-row3').value = p.encoders.row3;
-  renderPageButtons();
+function capturePageState() {
+  const leds = {};
+  const names = {};
+  for (const [key, ctrl] of Object.entries(controlMap)) {
+    if (ctrl.ledVal != null && ctrl.ledVal > 0) leds[key] = ctrl.ledVal;
+    if (ctrl.name) names[key] = ctrl.name;
+  }
+  return {
+    leds,
+    names,
+    encoders: {
+      row1: document.getElementById('page-enc-row1').value,
+      row2: document.getElementById('page-enc-row2').value,
+      row3: document.getElementById('page-enc-row3').value,
+    }
+  };
 }
 
 function saveCurrentPage() {
-  const p = pages[currentPage];
-  if (!p) return;
-  p.name = document.getElementById('page-name').value || 'Untitled';
-  p.screenL1 = document.getElementById('page-screen-l1').value;
-  p.screenL2 = document.getElementById('page-screen-l2').value;
-  p.encoders.row1 = document.getElementById('page-enc-row1').value;
-  p.encoders.row2 = document.getElementById('page-enc-row2').value;
-  p.encoders.row3 = document.getElementById('page-enc-row3').value;
-  // buttons saved inline
+  const page = pages[currentPageIndex];
+  const state = capturePageState();
+  page.leds = state.leds;
+  page.names = state.names;
+  page.encoders = state.encoders;
+  page.name = document.getElementById('page-name').value || page.name;
+  console.log(`[midiwave] Saved page "${page.name}" (${Object.keys(page.leds).length} LEDs)`);
+  renderPageList();
 }
 
-function renderPageButtons() {
-  const p = pages[currentPage];
-  const container = document.getElementById('page-buttons');
-  container.innerHTML = p.buttons.map((b, i) =>
-    `<div class="row">
-      <input type="text" value="${b.name}" onchange="pages[${currentPage}].buttons[${i}].name=this.value" placeholder="name" style="width:80px;flex:none;">
-      <label style="min-width:auto">CC</label>
-      <input type="number" value="${b.cc}" onchange="pages[${currentPage}].buttons[${i}].cc=+this.value" style="width:50px;flex:none;">
-      <label style="min-width:auto">Ch</label>
-      <input type="number" value="${b.channel}" onchange="pages[${currentPage}].buttons[${i}].channel=+this.value" style="width:40px;flex:none;">
-      <input type="color" value="${rgbToHex(b.led)}" onchange="pages[${currentPage}].buttons[${i}].led=hexToRgb7(this.value)">
-      <button class="btn-sm danger" onclick="pages[${currentPage}].buttons.splice(${i},1);renderPageButtons();">x</button>
+function addNewPage() {
+  // Save current first
+  saveCurrentPage();
+  pages.push({
+    name: 'Page ' + (pages.length + 1),
+    leds: {},
+    names: {},
+    encoders: { row1: 'absolute', row2: 'relative', row3: 'relative' }
+  });
+  currentPageIndex = pages.length - 1;
+  loadPage(currentPageIndex);
+  renderPageList();
+  console.log(`[midiwave] Created new page "${pages[currentPageIndex].name}"`);
+}
+
+function deleteCurrentPage() {
+  if (pages.length <= 1) return;
+  pages.splice(currentPageIndex, 1);
+  currentPageIndex = Math.min(currentPageIndex, pages.length - 1);
+  loadPage(currentPageIndex);
+  renderPageList();
+}
+
+function loadPage(index) {
+  currentPageIndex = index;
+  const page = pages[index];
+
+  // Clear all LEDs
+  for (const [key, ctrl] of Object.entries(controlMap)) {
+    ctrl.ledVal = 0;
+    ctrl.name = '';
+    updateControlVisual(key);
+  }
+
+  // Apply page state
+  for (const [key, val] of Object.entries(page.leds)) {
+    if (controlMap[key]) {
+      controlMap[key].ledVal = val;
+      updateControlVisual(key);
+    }
+  }
+  for (const [key, name] of Object.entries(page.names)) {
+    if (controlMap[key]) controlMap[key].name = name;
+  }
+
+  document.getElementById('page-name').value = page.name;
+  document.getElementById('page-enc-row1').value = page.encoders.row1;
+  document.getElementById('page-enc-row2').value = page.encoders.row2;
+  document.getElementById('page-enc-row3').value = page.encoders.row3;
+
+  renderPageList();
+  console.log(`[midiwave] Loaded page "${page.name}"`);
+}
+
+function applyCurrentPage() {
+  saveCurrentPage();
+  const page = pages[currentPageIndex];
+  const port = midiAccess?.outputs.get(document.getElementById('midi-out').value);
+  if (!port) { console.warn('[midiwave] No output port'); return; }
+
+  // Send all LED values
+  let count = 0;
+  for (const [key, val] of Object.entries(page.leds)) {
+    const ctrl = controlMap[key];
+    if (ctrl && ctrl.cc != null) {
+      port.send([0xB0, ctrl.cc, val & 0x7F]);
+      count++;
+    }
+  }
+
+  // Clear LEDs not in this page
+  for (const [key, ctrl] of Object.entries(controlMap)) {
+    if (ctrl.cc != null && !page.leds[key]) {
+      port.send([0xB0, ctrl.cc, 0]);
+    }
+  }
+
+  // Set encoder modes
+  sendRelativeMode(1, page.encoders.row1 === 'relative');
+  sendRelativeMode(2, page.encoders.row2 === 'relative');
+  sendRelativeMode(3, page.encoders.row3 === 'relative');
+
+  console.log(`[midiwave] Applied page "${page.name}" — ${count} LEDs sent`);
+}
+
+function renameCurrentPage() {
+  pages[currentPageIndex].name = document.getElementById('page-name').value;
+  renderPageList();
+}
+
+function renderPageList() {
+  const container = document.getElementById('page-list');
+  container.innerHTML = pages.map((p, i) =>
+    `<div style="padding:4px 8px;margin-bottom:2px;border-radius:4px;cursor:pointer;font-size:11px;
+      background:${i === currentPageIndex ? 'var(--accent)' : 'var(--surface2)'};
+      color:${i === currentPageIndex ? '#fff' : 'var(--text-dim)'};
+      border:1px solid ${i === currentPageIndex ? 'var(--accent)' : 'var(--border)'};"
+      onclick="loadPage(${i})">
+      ${p.name} <span style="opacity:0.5">(${Object.keys(p.leds).length} LEDs)</span>
     </div>`
   ).join('');
 }
 
-function addPageButton() {
-  pages[currentPage].buttons.push({ name: 'btn', cc: 37, channel: 1, led: { r: 0, g: 100, b: 10 } });
-  renderPageButtons();
-}
-
-function applyPage() {
+function switchPage(direction) {
   saveCurrentPage();
-  const p = pages[currentPage];
-  // Send screen
-  document.getElementById('screen-line1').value = p.screenL1;
-  document.getElementById('screen-line2').value = p.screenL2;
-  sendScreen();
-  // Set encoder modes
-  sendRelativeMode(1, p.encoders.row1 === 'relative');
-  sendRelativeMode(2, p.encoders.row2 === 'relative');
-  sendRelativeMode(3, p.encoders.row3 === 'relative');
-  // Set LED colors
-  for (const b of p.buttons) {
-    sendLED(b.cc, b.led.r, b.led.g, b.led.b);
-    ledColors[b.cc] = b.led;
-  }
-  rebuildLEDGrid();
-}
-
-function handlePageCC(ch, cc, val) {
-  // placeholder for page-specific CC handling
-  // extend as needed for button callbacks etc.
+  currentPageIndex = (currentPageIndex + direction + pages.length) % pages.length;
+  loadPage(currentPageIndex);
+  applyCurrentPage();
 }
 
 // ─── Export ───
@@ -974,71 +1968,52 @@ function exportConfig() {
   const config = {
     device: 'Launch Control XL MK3',
     daw_mode: true,
-    sysex_header: [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15],
+    led_method: 'cc_ch1',
+    controls: {},
     pages: pages.map(p => ({
       name: p.name,
-      screen: {
-        line1: p.screenL1,
-        line2: p.screenL2,
-        target: document.getElementById('screen-target').value,
-        arrangement: parseInt(document.getElementById('screen-arrange').value)
-      },
-      buttons: Object.fromEntries(p.buttons.map(b => [b.name, {
-        cc: b.cc,
-        channel: b.channel,
-        led_color: [b.led.r, b.led.g, b.led.b]
-      }])),
-      encoders: {
-        row1: { ccs: [13,14,15,16,17,18,19,20], channel: 16, mode: p.encoders.row1 },
-        row2: { ccs: [29,30,31,32,33,34,35,36], channel: 16, mode: p.encoders.row2 },
-        row3: { ccs: [45,46,47,48,49,50,51,52], channel: 16, mode: p.encoders.row3 }
-      },
-      faders: { ccs: [77,78,79,80,81,82,83,84], channel: 16 }
+      leds: p.leds,
+      names: p.names,
+      encoders: p.encoders
     })),
-    leds: Object.fromEntries(Object.entries(ledColors).map(([cc, c]) => [cc, [c.r, c.g, c.b]]))
+    screen: {
+      target: document.getElementById('screen-target').value,
+      arrangement: parseInt(document.getElementById('screen-arrange').value)
+    }
   };
+
+  for (const [key, ctrl] of Object.entries(controlMap)) {
+    if (ctrl.cc != null) {
+      config.controls[key] = {
+        cc: ctrl.cc,
+        channel: ctrl.ch,
+        name: ctrl.name || key
+      };
+    }
+  }
 
   const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'midi-lab-config.json';
+  a.download = 'midiwave-config.json';
   a.click();
   URL.revokeObjectURL(a.href);
+  console.log('[midiwave] Config exported with ' + pages.length + ' pages');
 }
 
 // ─── Tab Switching ───
-function switchTab(el, side, tabId) {
-  const parent = el.closest('.panel');
-  parent.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
-  parent.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+function switchTab(el, tabId) {
+  document.querySelectorAll('.sidebar .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-body').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   document.getElementById(tabId).classList.add('active');
 }
 
-// ─── Utilities ───
-function rgbToHex(c) {
-  const r = Math.round(c.r / 127 * 255);
-  const g = Math.round(c.g / 127 * 255);
-  const b = Math.round(c.b / 127 * 255);
-  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-}
-
-function hexToRgb7(hex) {
-  return {
-    r: Math.round(parseInt(hex.slice(1, 3), 16) / 255 * 127),
-    g: Math.round(parseInt(hex.slice(3, 5), 16) / 255 * 127),
-    b: Math.round(parseInt(hex.slice(5, 7), 16) / 255 * 127)
-  };
-}
-
 // ─── Init ───
-rebuildLEDGrid();
-renderPageTabs();
-
-// Auto-request MIDI on load if available
-if (navigator.requestMIDIAccess) {
-  requestMIDI();
-}
+buildController();
+buildPalette();
+renderPageList();
+if (navigator.requestMIDIAccess) requestMIDI();
 </script>
 </body>
 </html>

@@ -103,8 +103,14 @@ All LCXL3 SysEx messages start with: `F0 00 20 29 02 15`
 - In DAW mode, button presses send CCs on channel 1 (val > 0 = press)
 - Faders send CCs on channel 16 (absolute 0-127)
 - Encoders send CCs on channel 16 (absolute by default, relative if enabled)
+- Page Up: CC 106 ch1, Page Down: CC 107 ch1
 
 ### Relative Encoder Mode
+**Confirmed encoder CCs (DAW mode, ch16 for data, ch1 for LEDs):**
+- Row 1: CC 13-20
+- Row 2: CC 21-28
+- Row 3: CC 29-36
+
 Enable relative mode per row by sending CC on **channel 7** (0xB6):
 - Row 1: CC 69 — `B6 45 7F` (on) / `B6 45 00` (off)
 - Row 2: CC 72 — `B6 48 7F` (on) / `B6 48 00` (off)
@@ -112,16 +118,55 @@ Enable relative mode per row by sending CC on **channel 7** (0xB6):
 
 Relative values: center at 64. 65+ = clockwise, 63- = counter-clockwise. Delta = value - 64.
 
-### RGB LED (SysEx)
-Set a button LED color:
+**Encoder LED colors:** Same CC-on-ch1 system as buttons. Send CC 13-36 on ch1 with palette value 0-127.
+
+### RGB LED (SysEx — legacy, works via WinMM only)
+SysEx LED commands work from waveloop (WinMM) but NOT from Web MIDI API.
 ```
 F0 00 20 29 02 15 01 <cc_index> <R> <G> <B> F7
 ```
-- `cc_index`: the CC number of the button (e.g., 37-52 for default DAW mode buttons, or 116/118 for remapped ones)
 - R, G, B: 0-127 each
 
-### OLED Screen (SysEx)
-Two-step process:
+### LED Control (CC — confirmed working via Web MIDI)
+**MK3 uses CC on channel 1 with a 128-color palette index:**
+```
+B0 <cc_index> <color_value>
+```
+- `cc_index`: the CC number of the button (37-52 for DAW mode buttons)
+- `color_value`: 0-127 palette index
+- Channel 1 = solid color
+- Channel 2 = slow flash
+- Channel 3 = fast flash
+- Channel 4 = solid white (any value)
+- Value 0 = LED off
+
+**Color palette (approximate):**
+| Values | Colors |
+|--------|--------|
+| 0 | Off |
+| 1-3 | Dark grey, mid grey, white |
+| 4-7 | Red (light to dark) |
+| 8-11 | Orange (light to dark) |
+| 12-15 | Yellow (light to dark) |
+| 16-19 | Yellow-green (light to dark) |
+| 20-23 | Neon green (light to dark) |
+| 24-31 | Teal variations (light to dark) |
+| 32-39 | Teal to bluish teal |
+| 40-47 | Sky blue to rich blue |
+| 48-55 | Purples to pinks |
+| 56-59 | Fuscia |
+| 60-127 | Mixed/compound colors |
+
+### Identity Response
+```
+F0 7E 00 06 02 00 20 29 48 01 00 01 01 01 0B 39 F7
+```
+- Manufacturer: 00 20 29 (Novation/Focusrite)
+- Device family: 0x48
+- SysEx device ID 0x15 still works for DAW mode ON/OFF but NOT for LED/screen
+
+### OLED Screen (SysEx — works via WinMM only)
+Two-step process (confirmed working in waveloop C code, NOT via Web MIDI):
 
 **Step 1 — Configure display:**
 ```
@@ -134,14 +179,13 @@ F0 00 20 29 02 15 04 <target> <arrangement> F7
 ```
 F0 00 20 29 02 15 06 <target> 00 <line1 ASCII bytes> 00 01 <line2 ASCII bytes> F7
 ```
-- Field 0x00 = line 1, field 0x01 = line 2
-- ASCII chars masked to 7-bit (& 0x7F)
-- Null byte (0x00) terminates line 1 text before field 0x01 marker
 
 ### Known LCXL3 Port Names (Windows)
-- **MIDIIN2 (Launch Control XL MK3)** — DAW input port
-- **MIDIOUT2 (Launch Control XL MK3)** — DAW output port (SysEx, LEDs, screen)
-- **MIDIIN (Launch Control XL MK3)** — standalone input port
+- **LCXL3 1 MIDI** — standalone port (LED CC works here)
+- **MIDIIN2 (LCXL3 1 MIDI)** — DAW input port
+- **MIDIOUT2 (LCXL3 1 MIDI)** — DAW output port (DAW mode, relative encoders, LED CC)
+- **MIDIOUT3/4 (LCXL3 1 MIDI)** — additional ports
+- **MIDIIN (Launch Control XL MK3)** — old naming, standalone input port
 - **MIDIOUT (Launch Control XL MK3)** — standalone output port
 
 DAW mode only works on the MIDIIN2/MIDIOUT2 pair. Opening the wrong port is a common source of "nothing works."
