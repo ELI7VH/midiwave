@@ -118,7 +118,12 @@ Enable relative mode per row by sending CC on **channel 7** (0xB6):
 
 Relative values: center at 64. 65+ = clockwise, 63- = counter-clockwise. Delta = value - 64.
 
-**Encoder LED colors:** Same CC-on-ch1 system as buttons. Send CC 13-36 on ch1 with palette value 0-127.
+**IMPORTANT: Relative mode shifts CC numbers by +64 (0x40):**
+- Row 1 relative: CC 77-84 (13+64 to 20+64)
+- Row 2 relative: CC 85-92 (21+64 to 28+64)
+- Row 3 relative: CC 93-100 (29+64 to 36+64)
+
+**Encoder LED colors:** Same CC-on-ch1 system as buttons. Send CC 13-36 on ch1 with palette value 0-127. LED CC numbers do NOT shift — always use the base CC (13-36) for LEDs regardless of relative mode.
 
 ### RGB LED (SysEx — legacy, works via WinMM only)
 SysEx LED commands work from waveloop (WinMM) but NOT from Web MIDI API.

@@ -540,8 +540,11 @@ button.active { background: var(--accent); border-color: var(--accent); color: #
       <div class="row">
         <button class="primary" onclick="applyCurrentPage()">Apply to Hardware</button>
       </div>
-      <div class="section-label" style="margin-top:8px;">Page Switching</div>
-      <div style="font-size:10px;color:var(--text-dim);">Use PG▲/PG▼ buttons on LCXL3 to cycle pages (bind via Learn All first)</div>
+      <div class="section-label" style="margin-top:8px;">Hardware Page Switching</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;">
+        PG▲ = CC 106, PG▼ = CC 107 (ch1) — auto-cycles pages<br>
+        Press Track ◀▶, Shift, Mode on hardware to discover their CCs in Monitor tab
+      </div>
     </div>
 
     <div id="tab-sysex" class="tab-body">
@@ -594,7 +597,26 @@ button.active { background: var(--accent); border-color: var(--accent); color: #
         <input type="text" id="screen-line2" placeholder="Ready" maxlength="20">
       </div>
       <div class="row">
-        <button class="primary" onclick="sendScreen()">Send to Screen</button>
+        <button class="primary" onclick="sendScreen()">Send</button>
+        <button id="btn-screen-loop" onclick="toggleScreenLoop()">Loop</button>
+      </div>
+      <div class="section-divider"></div>
+      <div class="section-label">Arrangements</div>
+      <div class="preset-grid">
+        <button class="btn-sm" onclick="document.getElementById('screen-arrange').value=0;sendScreen()">Arr 0</button>
+        <button class="btn-sm" onclick="document.getElementById('screen-arrange').value=1;sendScreen()">Arr 1</button>
+        <button class="btn-sm" onclick="document.getElementById('screen-arrange').value=2;sendScreen()">Arr 2</button>
+        <button class="btn-sm" onclick="document.getElementById('screen-arrange').value=3;sendScreen()">Arr 3</button>
+        <button class="btn-sm" onclick="document.getElementById('screen-arrange').value=4;sendScreen()">Arr 4</button>
+      </div>
+      <div class="section-label">Format Tests</div>
+      <div class="preset-grid">
+        <button class="btn-sm" onclick="sendScreenFormat('waveloop')">Waveloop</button>
+        <button class="btn-sm" onclick="sendScreenFormat('newline')">Newline</button>
+        <button class="btn-sm" onclick="sendScreenFormat('nofield')">No field</button>
+        <button class="btn-sm" onclick="sendScreenCombo()" style="border-color:var(--green);color:var(--green);">Combo</button>
+        <button class="btn-sm" onclick="sendScreenRefresh()" style="border-color:var(--yellow);color:var(--yellow);">DAW Refresh</button>
+        <button class="btn-sm" onclick="sendScreenTwoStep()" style="border-color:var(--accent2);color:var(--accent2);">Two-Step</button>
       </div>
       <div class="hex-preview" id="screen-hex">--</div>
     </div>
@@ -907,12 +929,19 @@ function updateControlVisual(key) {
   }
 
   if (ctrl.lastValue != null) {
+    // Fader fill
     if (el.classList.contains('fader-track') || el.closest('.fader-col')) {
       const fill = el.querySelector('.fader-fill') || el.closest('.fader-col')?.querySelector('.fader-fill');
       if (fill) fill.style.height = `${(ctrl.lastValue / 127) * 100}%`;
+      const fLabel = el.closest('.fader-col')?.querySelector('.fader-label');
+      if (fLabel) fLabel.textContent = `${Math.round(ctrl.lastValue / 127 * 100)}%`;
     }
+    // Encoder value display
     const valEl = el.querySelector('.val');
-    if (valEl) valEl.textContent = ctrl.lastValue;
+    if (valEl) {
+      const pct = Math.round(ctrl.lastValue / 127 * 100);
+      valEl.textContent = ctrl.name ? `${pct}%` : ctrl.lastValue;
+    }
   }
 
   if (ctrl.name) {
@@ -1113,8 +1142,10 @@ function mapIncomingCC(ch, cc, val) {
   }
 
   // Find which control this CC belongs to and update it
+  // Encoders in relative mode send CC+64, so also check cc-64
+  let matched = false;
   for (const [key, ctrl] of Object.entries(controlMap)) {
-    if (ctrl.cc === cc && ctrl.ch === ch) {
+    if (ctrl.ch === ch && (ctrl.cc === cc || ctrl.cc === cc - 64)) {
       ctrl.lastValue = val;
       updateControlVisual(key);
 
@@ -1124,9 +1155,39 @@ function mapIncomingCC(ch, cc, val) {
         el.classList.add('active');
         setTimeout(() => el.classList.remove('active'), 150);
       }
+
+      // Update selected control panel if this is the selected one
+      if (key === selectedKey) {
+        updateSelectedInfo(ctrl);
+      }
+
+      // Show knob value on LCXL3 screen (if screen loop isn't running)
+      if (!screenInterval && key.startsWith('enc:') || key.startsWith('fader:')) {
+        const name = ctrl.name || `CC ${ctrl.cc}`;
+        const pct = Math.round(val / 127 * 100);
+        sendScreenDirect(name, `${pct}%`);
+      }
+
+      matched = true;
       break;
     }
   }
+
+  // If no match and it's an unknown CC, log it for discovery
+  if (!matched) {
+    console.log(`[midiwave] Unknown CC: ch${ch} cc${cc} val${val} — not mapped to any control`);
+  }
+}
+
+function updateSelectedInfo(ctrl) {
+  const pct = Math.round((ctrl.lastValue / 127) * 100);
+  const isRelative = ctrl.lastValue !== null && ctrl.ch === 16;
+  let display = `val: ${ctrl.lastValue} (${pct}%)`;
+  if (isRelative && ctrl.lastValue !== null) {
+    const delta = ctrl.lastValue - 64;
+    if (delta !== 0) display += ` delta: ${delta > 0 ? '+' : ''}${delta}`;
+  }
+  document.getElementById('ctrl-cc').textContent = ctrl.cc != null ? `${ctrl.cc} — ${display}` : '--';
 }
 
 function updateControlLabel(key) {
@@ -1200,26 +1261,237 @@ function sendCC() {
 }
 
 // ─── Screen ───
-function sendScreen() {
-  const target = parseInt(document.getElementById('screen-target').value);
-  const arrange = parseInt(document.getElementById('screen-arrange').value);
-  const line1 = document.getElementById('screen-line1').value;
-  const line2 = document.getElementById('screen-line2').value;
+let screenInterval = null;
 
+function buildScreenMsg(line1, line2, target, arrange) {
   const configMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x04, target, arrange, 0xF7];
-  send(configMsg);
 
+  // Text: skip field index byte — just raw text with 0x0A (newline) as separator
+  const textMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x06, target];
+  for (let i = 0; i < line1.length; i++) textMsg.push(line1.charCodeAt(i) & 0x7F);
+  if (line2.length > 0) {
+    textMsg.push(0x0A); // newline as separator
+    for (let i = 0; i < line2.length; i++) textMsg.push(line2.charCodeAt(i) & 0x7F);
+  }
+  textMsg.push(0xF7);
+
+  return { configMsg, textMsg };
+}
+
+// Also build the old waveloop format for comparison
+function buildScreenMsgWaveloop(line1, line2, target, arrange) {
+  const configMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x04, target, arrange, 0xF7];
   const textMsg = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x06, target, 0x00];
   for (let i = 0; i < line1.length; i++) textMsg.push(line1.charCodeAt(i) & 0x7F);
   textMsg.push(0x00, 0x01);
   for (let i = 0; i < line2.length; i++) textMsg.push(line2.charCodeAt(i) & 0x7F);
   textMsg.push(0xF7);
+  return { configMsg, textMsg };
+}
 
-  setTimeout(() => send(textMsg), 50);
+function sendScreen() {
+  const target = parseInt(document.getElementById('screen-target').value);
+  const arrange = parseInt(document.getElementById('screen-arrange').value);
+  const line1 = document.getElementById('screen-line1').value || 'midiwave';
+  const line2 = document.getElementById('screen-line2').value || '';
+  const H = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15];
+  const l1 = [...line1].map(c => c.charCodeAt(0) & 0x7F);
+  const l2 = [...line2].map(c => c.charCodeAt(0) & 0x7F);
 
-  const hex1 = configMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-  const hex2 = textMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-  document.getElementById('screen-hex').textContent = hex1 + '\n' + hex2;
+  // Config
+  const configMsg = [...H, 0x04, target, arrange, 0xF7];
+  // Waveloop format (sets buffer)
+  const wlMsg = [...H, 0x06, target, 0x00, ...l1, 0x00, 0x01, ...l2, 0xF7];
+  // Newline format (triggers display)
+  const nlMsg = [...H, 0x06, target, ...l1, 0x0A, ...l2, 0xF7];
+
+  // Two-step send to all ports: config → waveloop → newline
+  const ports = getAllLCXLPorts();
+  for (const p of ports) {
+    p.port.send(new Uint8Array(configMsg));
+  }
+  setTimeout(() => {
+    for (const p of ports) {
+      p.port.send(new Uint8Array(wlMsg));
+      console.log(`[midiwave] SCREEN → ${p.name}: waveloop "${line1}" / "${line2}"`);
+    }
+  }, 100);
+  setTimeout(() => {
+    for (const p of ports) {
+      p.port.send(new Uint8Array(nlMsg));
+      console.log(`[midiwave] SCREEN → ${p.name}: newline "${line1}" / "${line2}"`);
+    }
+  }, 200);
+
+  document.getElementById('screen-hex').textContent =
+    'WL: ' + wlMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ') + '\n' +
+    'NL: ' + nlMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+}
+
+function toggleScreenLoop() {
+  if (screenInterval) {
+    clearInterval(screenInterval);
+    screenInterval = null;
+    document.getElementById('btn-screen-loop').classList.remove('active');
+    console.log('[midiwave] Screen loop stopped');
+    return;
+  }
+  document.getElementById('btn-screen-loop').classList.add('active');
+  // Fast loop to fight DAW mode overlay
+  console.log('[midiwave] Screen loop started — resending every 200ms');
+  sendScreenFast();
+  screenInterval = setInterval(sendScreenFast, 200);
+}
+
+function sendScreenFast() {
+  if (!activeOutput) return;
+  const target = parseInt(document.getElementById('screen-target').value);
+  const arrange = parseInt(document.getElementById('screen-arrange').value);
+  const line1 = document.getElementById('screen-line1').value || 'midiwave';
+  const line2 = document.getElementById('screen-line2').value || '';
+  sendScreenTwoStep(activeOutput, target, arrange, line1, line2);
+}
+
+function sendScreenFormat(fmt) {
+  const ports = getAllLCXLPorts();
+  if (!ports.length) { console.warn('[midiwave] No LCXL3 ports'); return; }
+  const port = ports[0].port; // use first LCXL3 port
+  const target = parseInt(document.getElementById('screen-target').value);
+  const arrange = parseInt(document.getElementById('screen-arrange').value);
+  const line1 = document.getElementById('screen-line1').value || 'HI';
+  const line2 = document.getElementById('screen-line2').value || 'OK';
+  const H = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15];
+
+  const l1 = [...line1].map(c => c.charCodeAt(0) & 0x7F);
+  const l2 = [...line2].map(c => c.charCodeAt(0) & 0x7F);
+
+  let textMsg;
+  switch(fmt) {
+    case 'waveloop':
+      // Original: header 06 target 00 <l1> 00 01 <l2> F7
+      textMsg = [...H, 0x06, target, 0x00, ...l1, 0x00, 0x01, ...l2, 0xF7];
+      break;
+    case 'newline':
+      // No field index, newline separator
+      textMsg = [...H, 0x06, target, ...l1, 0x0A, ...l2, 0xF7];
+      break;
+    case 'nofield':
+      // No field index at all, just raw text with space
+      textMsg = [...H, 0x06, target, ...l1, 0x20, ...l2, 0xF7];
+      break;
+  }
+
+  // Send config then text to ALL ports
+  for (const p of ports) {
+    p.port.send(new Uint8Array([...H, 0x04, target, arrange, 0xF7]));
+  }
+  setTimeout(() => {
+    for (const p of ports) {
+      p.port.send(new Uint8Array(textMsg));
+    }
+    const hex = textMsg.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    console.log(`[midiwave] SCREEN FMT ${fmt}: ${hex}`);
+    document.getElementById('screen-hex').textContent = `${fmt}: ${hex}`;
+  }, 200);
+}
+
+function sendScreenRefresh() {
+  const ports = getAllLCXLPorts();
+  if (!ports.length) return;
+  console.log('[midiwave] DAW REFRESH: exit → re-enter → screen');
+
+  const dawOff = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x02, 0x00, 0xF7];
+  const dawOn = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x02, 0x7F, 0xF7];
+
+  for (const p of ports) p.port.send(new Uint8Array(dawOff));
+
+  setTimeout(() => {
+    for (const p of ports) p.port.send(new Uint8Array(dawOn));
+    console.log('[midiwave] DAW re-entered');
+  }, 300);
+
+  setTimeout(() => {
+    sendScreen();
+    console.log('[midiwave] Screen sent after DAW refresh');
+  }, 700);
+}
+
+function sendScreenCombo() {
+  // Just automate clicking Waveloop then Newline with different arrangements
+  let delay = 0;
+  for (let arr = 0; arr <= 7; arr++) {
+    setTimeout(() => {
+      document.getElementById('screen-line1').value = `T${arr+1}:arr${arr}`;
+      document.getElementById('screen-line2').value = 'BOTTOM';
+      document.getElementById('screen-arrange').value = arr;
+      console.log(`[midiwave] COMBO ${arr+1}: arr=${arr} — calling sendScreenFormat waveloop+newline`);
+      sendScreenFormat('waveloop');
+      setTimeout(() => sendScreenFormat('newline'), 100);
+    }, delay);
+    delay += 800;
+  }
+
+  document.getElementById('info-learn-status').textContent = `Combo: 8 tests, arr 0-7`;
+  console.log(`[midiwave] Combo: 8 tests, ~${Math.round(delay/1000)}s`);
+}
+
+function sendScreenTwoStep() {
+  // Send line 1 and line 2 as completely separate SysEx text messages
+  const ports = getAllLCXLPorts();
+  if (!ports.length) return;
+  const target = parseInt(document.getElementById('screen-target').value);
+  const arrange = parseInt(document.getElementById('screen-arrange').value);
+  const line1 = document.getElementById('screen-line1').value || 'HI';
+  const line2 = document.getElementById('screen-line2').value || 'OK';
+  const H = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15];
+  const l1 = [...line1].map(c => c.charCodeAt(0) & 0x7F);
+  const l2 = [...line2].map(c => c.charCodeAt(0) & 0x7F);
+
+  // Config
+  for (const p of ports) p.port.send(new Uint8Array([...H, 0x04, target, arrange, 0xF7]));
+
+  // Line 1 as field 0
+  setTimeout(() => {
+    for (const p of ports) p.port.send(new Uint8Array([...H, 0x06, target, 0x00, ...l1, 0xF7]));
+    console.log('[midiwave] Two-step: line 1 sent');
+  }, 200);
+
+  // Line 2 as field 1
+  setTimeout(() => {
+    for (const p of ports) p.port.send(new Uint8Array([...H, 0x06, target, 0x01, ...l2, 0xF7]));
+    console.log('[midiwave] Two-step: line 2 sent');
+  }, 400);
+}
+
+function sendScreenDirect(line1, line2) {
+  if (!activeOutput) return;
+  const target = parseInt(document.getElementById('screen-target').value);
+  const arrange = parseInt(document.getElementById('screen-arrange').value);
+  sendScreenTwoStep(activeOutput, target, arrange, line1, line2);
+}
+
+function sendScreenTwoStep(port, target, arrange, line1, line2) {
+  const H = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15];
+  const l1 = [...line1].map(c => c.charCodeAt(0) & 0x7F);
+  const l2 = [...line2].map(c => c.charCodeAt(0) & 0x7F);
+  port.send(new Uint8Array([...H, 0x04, target, arrange, 0xF7]));
+  port.send(new Uint8Array([...H, 0x06, target, 0x00, ...l1, 0x00, 0x01, ...l2, 0xF7]));
+  port.send(new Uint8Array([...H, 0x06, target, ...l1, 0x0A, ...l2, 0xF7]));
+}
+
+function getAllLCXLPorts() {
+  const ports = [];
+  if (midiAccess) {
+    for (const [id, port] of midiAccess.outputs) {
+      if (port.name.includes('LCXL3') || port.name.includes('Launch Control')) {
+        ports.push({ port, name: port.name });
+      }
+    }
+  }
+  if (ports.length === 0 && activeOutput) {
+    ports.push({ port: activeOutput, name: 'active' });
+  }
+  return ports;
 }
 
 // ─── SysEx Workbench ───
